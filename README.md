@@ -1,4 +1,4 @@
-# gleneseo
+# job-postings
 
 A CLI that downloads a Google Sheet of job postings, sorts it, and writes it out as CSV.
 
@@ -169,7 +169,7 @@ npm run docker:build
 which is equivalent to:
 
 ```sh
-docker build . --tag gleneseo-ts-template:latest
+docker build . --tag job-postings:latest
 ```
 
 ### Run the container
@@ -181,13 +181,13 @@ npm run docker:run
 which is equivalent to:
 
 ```sh
-docker run --rm -it -t gleneseo-ts-template:latest
+docker run --rm -it -t job-postings:latest
 ```
 
 Pass CLI arguments after the image name, e.g. to show help:
 
 ```sh
-docker run --rm gleneseo-ts-template:latest --help
+docker run --rm job-postings:latest --help
 ```
 
 Via `npm run docker:run`, forward arguments after `--`:
