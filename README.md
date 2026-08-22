@@ -15,6 +15,18 @@ A CLI that downloads a Google Sheet of job postings, sorts it, and writes it out
 npm install
 ```
 
+## Google Cloud service account setup
+
+The CLI authenticates as a Google Cloud service account, so you need a project with the right APIs enabled and a JSON key file downloaded before you can run it.
+
+1. In the [Google Cloud Console](https://console.cloud.google.com/), select an existing project or create a new one.
+2. Enable the [Google Drive API](https://console.cloud.google.com/apis/library/drive.googleapis.com) and the [Google Sheets API](https://console.cloud.google.com/apis/library/sheets.googleapis.com) for that project.
+3. Go to **IAM & Admin → Service Accounts** and click **Create Service Account**. Give it a name; no project roles are required since access is granted at the Drive folder level (see step 5).
+4. Open the new service account, go to the **Keys** tab, click **Add Key → Create new key**, choose **JSON**, and download it. Store this file somewhere safe outside version control — it grants access to anything shared with the service account.
+5. Copy the service account's email address (looks like `<name>@<project-id>.iam.gserviceaccount.com`, visible on the service account's details page). In Google Drive, share the folder containing the target sheet with that email address, granting at least **Viewer** access.
+
+With that done, pass the key file's path as the CLI's `key-file-path` argument (see [Usage](#usage)).
+
 ## Usage
 
 Locates a Google Sheet in Drive by folder and file name, sorts its rows by `Last Contact` date (undated rows first, ties broken alphabetically by `Company`), and writes the result to a CSV file.
