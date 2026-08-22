@@ -23,6 +23,7 @@ export default defineConfig({
       thresholds: {
         "100": true,
       },
+      reporter: [["text", { skipFull: true }], "html", "clover", "json"],
       include: ["src"],
       exclude: [
         "dist",
