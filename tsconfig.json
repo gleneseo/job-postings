@@ -1,0 +1,19 @@
+{
+  "extends": [
+    "@tsconfig/node24/tsconfig.json",
+    "@tsconfig/strictest/tsconfig.json"
+  ],
+  "compilerOptions": {
+    "incremental": true,
+    "composite": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": ".",
+    "types": ["node"],
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "plugins": [{ "name": "@effect/language-service" }]
+  },
+  "include": ["src", "tests", "package.json"]
+}

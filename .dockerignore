@@ -1,0 +1,10 @@
+node_modules
+dist
+.coverage
+.eslint
+.data
+.git
+.husky
+.env
+.env.*
+*.md
