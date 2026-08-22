@@ -1,5 +1,5 @@
 {
-  "name": "gleneseo-ts-template",
+  "name": "job-postings",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -21,8 +21,8 @@
     "lint": "npm-run-all lint:eslint",
     "lint:eslint": "eslint .",
     "lint:eslint:report": "eslint . --output-file=.eslint/report.html --format=html",
-    "docker:build": " docker build . --tag gleneseo-ts-template:latest",
-    "docker:run": " docker run --rm -it -t gleneseo-ts-template:latest",
+    "docker:build": " docker build . --tag job-postings:latest",
+    "docker:run": " docker run --rm -it -t job-postings:latest",
     "proof": "git rev-parse HEAD | cowsay -r",
     "prepare": "husky && effect-language-service patch"
   },
