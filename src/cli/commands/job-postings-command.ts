@@ -42,8 +42,9 @@ const output = Flag.file("output").pipe(
 
 const quiet = Flag.boolean("quiet").pipe(
   Flag.withAlias("q"),
+  Flag.withDefault(false),
   Flag.withDescription(
-    "Suppress status messages; only runtime errors are printed",
+    "Suppress status messages; only runtime errors are printed (default: false)",
   ),
 );
 
