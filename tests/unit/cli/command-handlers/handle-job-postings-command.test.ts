@@ -1,5 +1,5 @@
 import { assert, describe, expect, it, vi } from "@effect/vitest";
-import { Effect, Layer, Runtime } from "effect";
+import { Duration, Effect, Layer, Runtime } from "effect";
 import { TestConsole } from "effect/testing";
 import type { Auth, drive_v3 } from "googleapis";
 import handleJobPostingsCommand from "../../../../src/cli/command-handlers/handle-job-postings-command.js";
@@ -25,6 +25,7 @@ import FileName from "../../../../src/helpers/file-name.js";
 import FolderId from "../../../../src/helpers/folder-id.js";
 import FileId from "../../../../src/helpers/file-id.js";
 import SheetIndex from "../../../../src/helpers/sheet-index.js";
+import TimeoutSeconds from "../../../../src/helpers/timeout-seconds.js";
 
 const fakeAuth = {} as unknown as Auth.GoogleAuth;
 const keyFilePath = FilePath.make("/tmp/key.json");
@@ -33,6 +34,8 @@ const fileName = FileName.make("Job Postings");
 const sheetIndex = SheetIndex.make(0);
 const output = FilePath.make("job-postings.csv");
 const quiet = false;
+const timeoutSeconds = TimeoutSeconds.make(30);
+const timeout = Duration.seconds(timeoutSeconds);
 const fakeFolder: drive_v3.Schema$File = { id: "1", name: "reports" };
 const fakeFile: drive_v3.Schema$File = { id: "2", name: "Job Postings" };
 const fakeValues: string[][] = [["title", "company"]];
@@ -49,6 +52,7 @@ const makeGoogleToolsTestDouble = (overrides: {
   getFolder?: (
     auth: Auth.GoogleAuth,
     name: typeof FolderName.Type,
+    timeout: Duration.Duration,
   ) => Effect.Effect<
     drive_v3.Schema$File,
     FolderSearchError | FolderNotFoundError | DuplicateFoldersFoundError
@@ -57,6 +61,7 @@ const makeGoogleToolsTestDouble = (overrides: {
     auth: Auth.GoogleAuth,
     name: typeof FileName.Type,
     folderId: typeof FolderId.Type,
+    timeout: Duration.Duration,
   ) => Effect.Effect<
     drive_v3.Schema$File,
     FileSearchError | FileNotFoundError | DuplicateFilesFoundError
@@ -65,6 +70,7 @@ const makeGoogleToolsTestDouble = (overrides: {
     auth: Auth.GoogleAuth,
     fileId: typeof FileId.Type,
     sheetIndex: typeof SheetIndex.Type,
+    timeout: Duration.Duration,
   ) => Effect.Effect<
     string[][],
     SheetFetchError | InvalidSheetIndexError | SheetValuesFetchError
@@ -118,6 +124,7 @@ describe("handleJobPostingsCommand", () => {
           sheetIndex,
           output,
           quiet,
+          timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools, fileWriter));
 
         expect(googleTools.getAuth).toHaveBeenCalledExactlyOnceWith(
@@ -126,16 +133,19 @@ describe("handleJobPostingsCommand", () => {
         expect(googleTools.getFolder).toHaveBeenCalledExactlyOnceWith(
           fakeAuth,
           folderName,
+          timeout,
         );
         expect(googleTools.getFile).toHaveBeenCalledExactlyOnceWith(
           fakeAuth,
           fileName,
           FolderId.make(fakeFolder.id ?? ""),
+          timeout,
         );
         expect(googleTools.getSheetValues).toHaveBeenCalledExactlyOnceWith(
           fakeAuth,
           FileId.make(fakeFile.id ?? ""),
           sheetIndex,
+          timeout,
         );
         expect(fileWriter.writeFile).toHaveBeenCalledExactlyOnceWith(
           output,
@@ -168,6 +178,7 @@ describe("handleJobPostingsCommand", () => {
           sheetIndex,
           output,
           quiet,
+          timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
 
         expect(googleTools.getFile).not.toHaveBeenCalled();
@@ -199,6 +210,7 @@ describe("handleJobPostingsCommand", () => {
           sheetIndex,
           output,
           quiet,
+          timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
 
         expect(failure).toStrictEqual(error);
@@ -227,6 +239,7 @@ describe("handleJobPostingsCommand", () => {
           sheetIndex,
           output,
           quiet,
+          timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
 
         expect(failure).toStrictEqual(error);
@@ -258,6 +271,7 @@ describe("handleJobPostingsCommand", () => {
           sheetIndex,
           output,
           quiet,
+          timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
 
         expect(failure).toStrictEqual(error);
@@ -289,6 +303,7 @@ describe("handleJobPostingsCommand", () => {
           sheetIndex,
           output,
           quiet,
+          timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
 
         expect(failure).toStrictEqual(error);
@@ -318,6 +333,7 @@ describe("handleJobPostingsCommand", () => {
           sheetIndex,
           output,
           quiet,
+          timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
 
         expect(failure).toStrictEqual(error);
@@ -350,6 +366,7 @@ describe("handleJobPostingsCommand", () => {
           sheetIndex,
           output,
           quiet,
+          timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
 
         expect(failure).toStrictEqual(error);
@@ -380,6 +397,7 @@ describe("handleJobPostingsCommand", () => {
           sheetIndex,
           output,
           quiet,
+          timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
 
         expect(failure).toStrictEqual(new MissingFileIdError({ fileName }));
@@ -408,7 +426,8 @@ describe("handleJobPostingsCommand", () => {
           sheetIndex,
           output,
           quiet,
-        ).pipe(provideTestDoubles(googleTools), Effect.flip);
+          timeoutSeconds,
+        ).pipe(provideTestDoubles(googleTools));
 
         expect(failure).toStrictEqual(new NoSheetDataError({ sheetIndex }));
         expect(Runtime.getErrorExitCode(failure)).toBe(33);
@@ -442,6 +461,7 @@ describe("handleJobPostingsCommand", () => {
           invalidSheetIndex,
           output,
           quiet,
+          timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
 
         expect(failure).toStrictEqual(error);
@@ -474,6 +494,7 @@ describe("handleJobPostingsCommand", () => {
           sheetIndex,
           output,
           quiet,
+          timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
 
         expect(failure).toStrictEqual(error);
@@ -507,6 +528,7 @@ describe("handleJobPostingsCommand", () => {
           sheetIndex,
           output,
           quiet,
+          timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
 
         expect(failure).toStrictEqual(error);
@@ -538,6 +560,7 @@ describe("handleJobPostingsCommand", () => {
           sheetIndex,
           output,
           quiet,
+          timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools, fileWriter), Effect.flip);
 
         expect(failure).toStrictEqual(error);

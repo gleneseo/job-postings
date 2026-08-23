@@ -4,6 +4,7 @@ import FilePath from "../../helpers/file-path.js";
 import FolderName from "../../helpers/folder-name.js";
 import FileName from "../../helpers/file-name.js";
 import SheetIndex from "../../helpers/sheet-index.js";
+import TimeoutSeconds from "../../helpers/timeout-seconds.js";
 
 const keyFilePath = Argument.file("key-file-path", { mustExist: true }).pipe(
   Argument.withSchema(FilePath),
@@ -45,6 +46,15 @@ const quiet = Flag.boolean("quiet").pipe(
   Flag.withDefault(false),
   Flag.withDescription(
     "Suppress status messages; only runtime errors are printed (default: false)",
+const timeoutSeconds = Flag.integer("timeout").pipe(
+  Flag.filter(
+    (n) => n > 0,
+    (n) => `--timeout must be greater than 0 seconds (got ${n.toString()})`,
+  ),
+  Flag.withSchema(TimeoutSeconds),
+  Flag.withDefault(TimeoutSeconds.make(5)),
+  Flag.withDescription(
+    "Network request timeout, in seconds, for each Google API call (default: 5)",
   ),
 );
 
@@ -52,6 +62,8 @@ const jobPostingsCommand = Command.make(
   "job-postings",
   { keyFilePath, folderName, fileName, sheetIndex, output, quiet },
   ({ keyFilePath, folderName, fileName, sheetIndex, output, quiet }) =>
+  { keyFilePath, folderName, fileName, sheetIndex, output, timeoutSeconds },
+  ({ keyFilePath, folderName, fileName, sheetIndex, output, timeoutSeconds }) =>
     handleJobPostingsCommand(
       keyFilePath,
       folderName,
@@ -59,6 +71,7 @@ const jobPostingsCommand = Command.make(
       sheetIndex,
       output,
       quiet,
+      timeoutSeconds,
     ),
 ).pipe(
   Command.withDescription(

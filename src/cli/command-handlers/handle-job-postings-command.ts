@@ -1,5 +1,6 @@
 import { Console, Effect } from "effect";
 import banner from "../banner.js";
+import { Console, Duration, Effect } from "effect";
 import GoogleTools from "../../google/google-tools.js";
 import MissingFolderIdError from "../../google/missing-folder-id-error.js";
 import FilePath from "../../helpers/file-path.js";
@@ -7,6 +8,7 @@ import FolderName from "../../helpers/folder-name.js";
 import FileName from "../../helpers/file-name.js";
 import FolderId from "../../helpers/folder-id.js";
 import SheetIndex from "../../helpers/sheet-index.js";
+import TimeoutSeconds from "../../helpers/timeout-seconds.js";
 import MissingFileIdError from "../../google/missing-file-id-error.js";
 import FileId from "../../helpers/file-id.js";
 import sortValues from "../../helpers/sort-values.js";
@@ -58,6 +60,8 @@ type JobPostingsError =
  * @param output - Path to write the resulting CSV file to
  * @param quiet - When true, suppresses the banner and status messages;
  * runtime errors are still printed
+ * @param timeoutSeconds - Network request timeout, in seconds, for each
+ * Google API call
  * @returns An effect that resolves once the command has finished, or fails
  * with the {@link JobPostingsError} that stopped it, after logging why
  */
@@ -68,6 +72,7 @@ const handleJobPostingsCommand: (
   sheetIndex: typeof SheetIndex.Type,
   output: typeof FilePath.Type,
   quiet: boolean,
+  timeoutSeconds: typeof TimeoutSeconds.Type,
 ) => Effect.Effect<void, JobPostingsError, GoogleTools | FileWriter> = (
   keyFilePath,
   folderName,
@@ -75,10 +80,12 @@ const handleJobPostingsCommand: (
   sheetIndex,
   output,
   quiet,
+  timeoutSeconds,
 ) =>
   Effect.gen(function* () {
     const googleTools = yield* GoogleTools;
     const fileWriter = yield* FileWriter;
+    const timeout = Duration.seconds(timeoutSeconds);
 
     const logStatus = (message: string) =>
       quiet ? Effect.void : Console.error(message);
@@ -92,6 +99,8 @@ const handleJobPostingsCommand: (
 
     yield* logStatus(`Searching for folder [${folderName}].`);
     const folder = yield* googleTools.getFolder(auth, folderName);
+    yield* Console.error(`Searching for folder [${folderName}].`);
+    const folder = yield* googleTools.getFolder(auth, folderName, timeout);
 
     if (!folder.id) {
       return yield* new MissingFolderIdError({ folderName });
@@ -104,6 +113,7 @@ const handleJobPostingsCommand: (
       auth,
       fileName,
       FolderId.make(folder.id),
+      timeout,
     );
 
     if (!file.id) {
@@ -117,6 +127,7 @@ const handleJobPostingsCommand: (
       auth,
       FileId.make(file.id),
       sheetIndex,
+      timeout,
     );
 
     if (!values.length) {
