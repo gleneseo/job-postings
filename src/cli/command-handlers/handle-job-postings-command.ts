@@ -20,6 +20,7 @@ import FileWriteError from "../../file-system/file-write-error.js";
 import FolderNotFoundError from "../../google/folder-not-found-error.js";
 import FolderSearchError from "../../google/folder-search-error.js";
 import InvalidSheetIndexError from "../../google/invalid-sheet-index-error.js";
+import NoSheetDataError from "../../google/no-sheet-data-error.js";
 import SheetFetchError from "../../google/sheet-fetch-error.js";
 import SheetValuesFetchError from "../../google/sheet-values-fetch-error.js";
 
@@ -39,6 +40,7 @@ type JobPostingsError =
   | InvalidSheetIndexError
   | MissingFileIdError
   | MissingFolderIdError
+  | NoSheetDataError
   | SheetFetchError
   | SheetValuesFetchError;
 
@@ -118,9 +120,7 @@ const handleJobPostingsCommand: (
     );
 
     if (!values.length) {
-      return yield* logStatus(
-        `Sheet at index [${sheetIndex.toString()}] does not contain any rows. Check [${fileName.toString()}].`,
-      );
+      return yield* new NoSheetDataError({ sheetIndex });
     }
 
     yield* logStatus(`Sorting and writing values to [${output}].`);
@@ -173,6 +173,10 @@ const handleJobPostingsCommand: (
       MissingFolderIdError: (e) =>
         Console.error(
           `❌ Folder [${folderName}] is missing an ID. Please check your Google Drive setup and try again.`,
+        ).pipe(Effect.andThen(() => Effect.fail(e))),
+      NoSheetDataError: (e) =>
+        Console.error(
+          `❌ Sheet at index [${e.sheetIndex.toString()}] in file [${fileName}] does not contain any rows. Add rows to the sheet and try again.`,
         ).pipe(Effect.andThen(() => Effect.fail(e))),
       SheetFetchError: (e) =>
         Console.error(
