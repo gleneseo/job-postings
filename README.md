@@ -1,6 +1,6 @@
 # job-postings
 
-A CLI that downloads a Google Sheet of job postings, sorts it, and writes it out as CSV.
+A CLI that downloads a Google Sheet of job postings, sorts it, and prints it to standard out as CSV.
 
 ## Requirements
 
@@ -29,7 +29,7 @@ With that done, pass the key file's path as the CLI's `key-file-path` argument (
 
 ## Usage
 
-Locates a Google Sheet in Drive by folder and file name, sorts its rows by `Last Contact` date (undated rows first, ties broken alphabetically by `Company`), and writes the result to a CSV file. If the target sheet has no rows, the CLI exits with `NoSheetDataError` (see [Exit codes](#exit-codes)) instead of writing a CSV.
+Locates a Google Sheet in Drive by folder and file name, sorts its rows by `Last Contact` date (undated rows first, ties broken alphabetically by `Company`), and prints the result to standard out as CSV, so it can be redirected to a file or piped into another CLI. If the target sheet has no rows, the CLI exits with `NoSheetDataError` (see [Exit codes](#exit-codes)) instead of printing a CSV.
 
 ```sh
 npm start -- ./key.json
@@ -37,20 +37,27 @@ npm start -- ./key.json
 
 An ASCII banner prints before the command runs, but only on an interactive terminal (stdout is a TTY) — it's skipped when output is piped, redirected, or otherwise non-interactive, so it doesn't clutter scripted or CI runs. Passing `--quiet` also suppresses it.
 
-| Argument/Flag              | Description                                                   | Default            |
-| -------------------------- | ------------------------------------------------------------- | ------------------ |
-| `key-file-path` (argument) | Path to the Google service account JSON key file              | —                  |
-| `--folder-name`            | The Google Drive folder that contains the sheet file          | `Claude`           |
-| `--file-name`              | The sheet file name                                           | `Job Postings`     |
-| `--sheet-index`, `-i`      | The 0-based index of the target sheet                         | `0`                |
-| `--output`, `-o`           | The path for the file's data in CSV format                    | `job-postings.csv` |
-| `--quiet`, `-q`            | Suppress status messages; runtime errors still print          | `false`            |
-| `--timeout`                | Network request timeout, in seconds, for each Google API call | `5`                |
+Progress messages are logged to standard error, keeping standard out free for the CSV data.
 
-For example, to read the second sheet of a file named `Applications` in a folder named `2026 Search`, and write it to `applications.csv`:
+| Argument/Flag              | Description                                                   | Default        |
+| -------------------------- | ------------------------------------------------------------- | -------------- |
+| `key-file-path` (argument) | Path to the Google service account JSON key file              | —              |
+| `--folder-name`            | The Google Drive folder that contains the sheet file          | `Claude`       |
+| `--file-name`              | The sheet file name                                           | `Job Postings` |
+| `--sheet-index`, `-i`      | The 0-based index of the target sheet                         | `0`            |
+| `--quiet`, `-q`            | Suppress status messages; runtime errors still print          | `false`        |
+| `--timeout`                | Network request timeout, in seconds, for each Google API call | `5`            |
+
+For example, to read the second sheet of a file named `Applications` in a folder named `2026 Search`, and redirect the CSV to `applications.csv`:
 
 ```sh
-npm start -- ./key.json --folder-name "2026 Search" --file-name Applications --sheet-index 1 --output applications.csv
+npm start -- ./key.json --folder-name "2026 Search" --file-name Applications --sheet-index 1 > applications.csv
+```
+
+Or pipe it directly into another CLI application:
+
+```sh
+npm start -- ./key.json | my-other-cli
 ```
 
 The service account only needs read-only access — it authenticates with the `spreadsheets.readonly` and `drive.readonly` scopes.
@@ -94,7 +101,6 @@ Each domain error the CLI can fail with exits with its own code, so scripts can 
 | `31`      | `InvalidSheetIndexError`     | `--sheet-index` is outside the range of available sheets. |
 | `32`      | `SheetValuesFetchError`      | Fetching the target sheet's values failed.                |
 | `33`      | `NoSheetDataError`           | The target sheet does not contain any rows.               |
-| `40`      | `FileWriteError`             | Writing the CSV to `--output` failed.                     |
 | `130`     | —                            | Interrupted (e.g. `Ctrl+C`).                              |
 
 A request that exceeds `--timeout` fails with the same error and exit code its underlying call would otherwise use (e.g. a folder search that times out is a `FolderSearchError`, exit `10`) — timing out doesn't introduce a separate code.

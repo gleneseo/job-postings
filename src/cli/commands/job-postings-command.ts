@@ -34,15 +34,6 @@ const sheetIndex = Flag.integer("sheet-index").pipe(
   Flag.withDescription("The 0-based index of the target sheet (default: 0)"),
 );
 
-const output = Flag.file("output").pipe(
-  Flag.withSchema(FilePath),
-  Flag.withAlias("o"),
-  Flag.withDefault(FilePath.make("job-postings.csv")),
-  Flag.withDescription(
-    'The path for the file\'s data in CSV format (default: "job-postings.csv")',
-  ),
-);
-
 const quiet = Flag.boolean("quiet").pipe(
   Flag.withAlias("q"),
   Flag.withDefault(false),
@@ -70,31 +61,21 @@ const jobPostingsCommandCore = Command.make(
     folderName,
     fileName,
     sheetIndex,
-    output,
     quiet,
     timeoutSeconds,
   },
-  ({
-    keyFilePath,
-    folderName,
-    fileName,
-    sheetIndex,
-    output,
-    quiet,
-    timeoutSeconds,
-  }) =>
+  ({ keyFilePath, folderName, fileName, sheetIndex, quiet, timeoutSeconds }) =>
     handleJobPostingsCommand(
       keyFilePath,
       folderName,
       fileName,
       sheetIndex,
-      output,
       quiet,
       timeoutSeconds,
     ),
 ).pipe(
   Command.withDescription(
-    "Sort a Google Sheet's job postings and write them to a CSV file",
+    "Sort a Google Sheet's job postings and print them to standard out as CSV",
   ),
 );
 
