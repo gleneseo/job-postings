@@ -1,10 +1,12 @@
-import { Argument, Command, Flag } from "effect/unstable/cli";
+import type { Effect } from "effect";
+import { Argument, Command, type CliError, Flag } from "effect/unstable/cli";
 import handleJobPostingsCommand from "../command-handlers/handle-job-postings-command.js";
 import FilePath from "../../helpers/file-path.js";
 import FolderName from "../../helpers/folder-name.js";
 import FileName from "../../helpers/file-name.js";
 import SheetIndex from "../../helpers/sheet-index.js";
 import TimeoutSeconds from "../../helpers/timeout-seconds.js";
+import packageJson from "../../../package.json" with { type: "json" };
 
 const keyFilePath = Argument.file("key-file-path", { mustExist: true }).pipe(
   Argument.withSchema(FilePath),
@@ -61,7 +63,7 @@ const timeoutSeconds = Flag.integer("timeout").pipe(
   ),
 );
 
-const jobPostingsCommand = Command.make(
+const jobPostingsCommandCore = Command.make(
   "job-postings",
   {
     keyFilePath,
@@ -94,6 +96,29 @@ const jobPostingsCommand = Command.make(
   Command.withDescription(
     "Sort a Google Sheet's job postings and write them to a CSV file",
   ),
+);
+
+type HandlerEffect = ReturnType<typeof handleJobPostingsCommand>;
+
+const helpCommand = Command.make(
+  "help",
+  {},
+  // The return type annotation breaks the type-inference cycle with
+  // `jobPostingsCommand`, which is declared below and referenced in the body.
+  // Without it, referencing `jobPostingsCommandCore` instead would compile,
+  // but would drop "help" from its own SUBCOMMANDS listing.
+  (): Effect.Effect<
+    void,
+    Effect.Error<HandlerEffect> | CliError.CliError,
+    Effect.Services<HandlerEffect> | Command.Environment
+  > =>
+    Command.runWith(jobPostingsCommand, { version: packageJson.version })([
+      "--help",
+    ]),
+).pipe(Command.withDescription("Show the application help"));
+
+const jobPostingsCommand = jobPostingsCommandCore.pipe(
+  Command.withSubcommands([helpCommand]),
 );
 
 export default jobPostingsCommand;
