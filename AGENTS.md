@@ -38,3 +38,15 @@ All test labels (e.g. the string passed to `it`/`test`) must start with "should"
 IMPORTANT: Code documentation must follow [TSDoc](https://tsdoc.org/) conventions.
 
 Documentation strings must never end in a `.`, unless they include multiple phrases (e.g. multiple sentences), in which case every phrase, including the last, ends in a `.`.
+
+## Project Structure
+
+| Path                                                     | Purpose                                                                                                                                               |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/index.ts`                                           | Application entry point. Composes dependency layers (services, observability, Node runtime) and executes the root CLI command.                        |
+| `src/cli/commands/`                                      | Effect CLI command definitions (`Command.make`, argument/flag configurations, metadata, descriptions).                                                |
+| `src/cli/command-handlers/`                              | Effect CLI command handlers containing orchestration logic, progress logging, and domain error handling.                                              |
+| `src/<domain>/` (e.g. `src/google/`, `src/file-system/`) | Domain-specific services extending `Context.Service` (with associated `Layer`s) and tagged errors extending `Schema.TaggedError`.                     |
+| `src/helpers/`                                           | Pure utility functions (e.g. CSV formatting, sorting) and shared Schema / branded types (e.g. `FilePath`, `FolderName`, `SheetIndex`).                |
+| `tests/unit/`                                            | Unit tests organized mirroring the `src/` directory hierarchy (e.g. `tests/unit/cli/command-handlers/`, `tests/unit/google/`, `tests/unit/helpers/`). |
+| `tests/integration/`                                     | Integration tests and test environment setup (e.g. testcontainers, database fixtures in `tests/integration/setup/`).                                  |
