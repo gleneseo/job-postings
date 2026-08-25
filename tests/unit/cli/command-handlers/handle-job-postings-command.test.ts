@@ -15,6 +15,7 @@ import MissingFileIdError from "../../../../src/google/missing-file-id-error.js"
 import SheetFetchError from "../../../../src/google/sheet-fetch-error.js";
 import SheetValuesFetchError from "../../../../src/google/sheet-values-fetch-error.js";
 import InvalidSheetIndexError from "../../../../src/google/invalid-sheet-index-error.js";
+import NoSheetDataError from "../../../../src/google/no-sheet-data-error.js";
 import GoogleTools from "../../../../src/google/google-tools.js";
 import FileWriter from "../../../../src/file-system/file-writer.js";
 import FileWriteError from "../../../../src/file-system/file-write-error.js";
@@ -393,28 +394,30 @@ describe("handleJobPostingsCommand", () => {
   );
 
   it.effect(
-    "should log a message and stop when the sheet has no data rows",
+    "should fail with a distinct exit code when the sheet has no data rows after logging it",
     () =>
       Effect.gen(function* () {
         const googleTools = makeGoogleToolsTestDouble({
           getSheetValues: () => Effect.succeed([]),
         });
 
-        yield* handleJobPostingsCommand(
+        const failure = yield* handleJobPostingsCommand(
           keyFilePath,
           folderName,
           fileName,
           sheetIndex,
           output,
           quiet,
-        ).pipe(provideTestDoubles(googleTools));
+        ).pipe(provideTestDoubles(googleTools), Effect.flip);
 
+        expect(failure).toStrictEqual(new NoSheetDataError({ sheetIndex }));
+        expect(Runtime.getErrorExitCode(failure)).toBe(33);
         assert.deepStrictEqual(yield* TestConsole.errorLines, [
           msgAuthenticating,
           msgSearchingForFolder,
           msgSearchingForFile,
           msgFetchingSheetValues(sheetIndex),
-          `Sheet at index [${sheetIndex.toString()}] does not contain any rows. Check [${fileName.toString()}].`,
+          `❌ Sheet at index [${sheetIndex.toString()}] in file [${fileName}] does not contain any rows. Add rows to the sheet and try again.`,
         ]);
       }),
   );

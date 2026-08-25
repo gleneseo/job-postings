@@ -29,7 +29,7 @@ With that done, pass the key file's path as the CLI's `key-file-path` argument (
 
 ## Usage
 
-Locates a Google Sheet in Drive by folder and file name, sorts its rows by `Last Contact` date (undated rows first, ties broken alphabetically by `Company`), and writes the result to a CSV file.
+Locates a Google Sheet in Drive by folder and file name, sorts its rows by `Last Contact` date (undated rows first, ties broken alphabetically by `Company`), and writes the result to a CSV file. If the target sheet has no rows, the CLI exits with `NoSheetDataError` (see [Exit codes](#exit-codes)) instead of writing a CSV.
 
 ```sh
 npm start -- ./key.json
@@ -92,6 +92,7 @@ Each domain error the CLI can fail with exits with its own code, so scripts can 
 | `30`      | `SheetFetchError`            | Fetching the file's sheets failed.                        |
 | `31`      | `InvalidSheetIndexError`     | `--sheet-index` is outside the range of available sheets. |
 | `32`      | `SheetValuesFetchError`      | Fetching the target sheet's values failed.                |
+| `33`      | `NoSheetDataError`           | The target sheet does not contain any rows.               |
 | `40`      | `FileWriteError`             | Writing the CSV to `--output` failed.                     |
 | `130`     | —                            | Interrupted (e.g. `Ctrl+C`).                              |
 
