@@ -12,6 +12,7 @@ export default defineConfig(
       ".coverage/**",
       ".eslint/**",
       ".data/**",
+      ".workmux/**",
       "vitest.config.ts",
       "commitlint.config.js",
     ],
