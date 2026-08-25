@@ -35,7 +35,7 @@ Locates a Google Sheet in Drive by folder and file name, sorts its rows by `Last
 npm start -- ./key.json
 ```
 
-An ASCII banner prints before the command runs, but only on an interactive terminal (stdout is a TTY) — it's skipped when output is piped, redirected, or otherwise non-interactive, so it doesn't clutter scripted or CI runs.
+An ASCII banner prints before the command runs, but only on an interactive terminal (stdout is a TTY) — it's skipped when output is piped, redirected, or otherwise non-interactive, so it doesn't clutter scripted or CI runs. Passing `--quiet` also suppresses it.
 
 | Argument/Flag              | Description                                          | Default            |
 | -------------------------- | ---------------------------------------------------- | ------------------ |
@@ -44,6 +44,7 @@ An ASCII banner prints before the command runs, but only on an interactive termi
 | `--file-name`              | The sheet file name                                  | `Job Postings`     |
 | `--sheet-index`, `-i`      | The 0-based index of the target sheet                | `0`                |
 | `--output`, `-o`           | The path for the file's data in CSV format           | `job-postings.csv` |
+| `--quiet`, `-q`            | Suppress status messages; runtime errors still print | `false`            |
 
 For example, to read the second sheet of a file named `Applications` in a folder named `2026 Search`, and write it to `applications.csv`:
 

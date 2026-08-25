@@ -1,4 +1,5 @@
 import { Console, Effect } from "effect";
+import banner from "../banner.js";
 import GoogleTools from "../../google/google-tools.js";
 import MissingFolderIdError from "../../google/missing-folder-id-error.js";
 import FilePath from "../../helpers/file-path.js";
@@ -53,6 +54,8 @@ type JobPostingsError =
  * @param fileName - Name of the sheet file to read
  * @param sheetIndex - Zero-based index of the sheet to read
  * @param output - Path to write the resulting CSV file to
+ * @param quiet - When true, suppresses the banner and status messages;
+ * runtime errors are still printed
  * @returns An effect that resolves once the command has finished, or fails
  * with the {@link JobPostingsError} that stopped it, after logging why
  */
@@ -62,28 +65,37 @@ const handleJobPostingsCommand: (
   fileName: typeof FileName.Type,
   sheetIndex: typeof SheetIndex.Type,
   output: typeof FilePath.Type,
+  quiet: boolean,
 ) => Effect.Effect<void, JobPostingsError, GoogleTools | FileWriter> = (
   keyFilePath,
   folderName,
   fileName,
   sheetIndex,
   output,
+  quiet,
 ) =>
   Effect.gen(function* () {
     const googleTools = yield* GoogleTools;
     const fileWriter = yield* FileWriter;
 
-    yield* Console.error(`Authenticating with key file [${keyFilePath}].`);
+    const logStatus = (message: string) =>
+      quiet ? Effect.void : Console.error(message);
+
+    if (!quiet && process.stdout.isTTY) {
+      yield* Console.log(banner);
+    }
+
+    yield* logStatus(`Authenticating with key file [${keyFilePath}].`);
     const auth = yield* googleTools.getAuth(keyFilePath);
 
-    yield* Console.error(`Searching for folder [${folderName}].`);
+    yield* logStatus(`Searching for folder [${folderName}].`);
     const folder = yield* googleTools.getFolder(auth, folderName);
 
     if (!folder.id) {
       return yield* new MissingFolderIdError({ folderName });
     }
 
-    yield* Console.error(
+    yield* logStatus(
       `Searching for file [${fileName}] in folder [${folderName}].`,
     );
     const file = yield* googleTools.getFile(
@@ -96,7 +108,7 @@ const handleJobPostingsCommand: (
       return yield* new MissingFileIdError({ fileName });
     }
 
-    yield* Console.error(
+    yield* logStatus(
       `Fetching values for sheet at index [${sheetIndex.toString()}] in file [${fileName}].`,
     );
     const values = yield* googleTools.getSheetValues(
@@ -106,18 +118,16 @@ const handleJobPostingsCommand: (
     );
 
     if (!values.length) {
-      return yield* Console.error(
+      return yield* logStatus(
         `Sheet at index [${sheetIndex.toString()}] does not contain any rows. Check [${fileName.toString()}].`,
       );
     }
 
-    yield* Console.error(`Sorting and writing values to [${output}].`);
+    yield* logStatus(`Sorting and writing values to [${output}].`);
     yield* sortValues(values).pipe(
       Effect.andThen((x) => createCsv(x)),
       Effect.andThen((x) => fileWriter.writeFile(output, x)),
-      Effect.andThen(() =>
-        Console.error(`Success. File written at [${output}].`),
-      ),
+      Effect.andThen(() => logStatus(`Success. File written at [${output}].`)),
     );
   }).pipe(
     Effect.withSpan("job-postings-command"),

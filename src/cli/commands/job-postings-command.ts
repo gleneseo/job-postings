@@ -40,16 +40,25 @@ const output = Flag.file("output").pipe(
   ),
 );
 
+const quiet = Flag.boolean("quiet").pipe(
+  Flag.withAlias("q"),
+  Flag.withDefault(false),
+  Flag.withDescription(
+    "Suppress status messages; only runtime errors are printed (default: false)",
+  ),
+);
+
 const jobPostingsCommand = Command.make(
   "job-postings",
-  { keyFilePath, folderName, fileName, sheetIndex, output },
-  ({ keyFilePath, folderName, fileName, sheetIndex, output }) =>
+  { keyFilePath, folderName, fileName, sheetIndex, output, quiet },
+  ({ keyFilePath, folderName, fileName, sheetIndex, output, quiet }) =>
     handleJobPostingsCommand(
       keyFilePath,
       folderName,
       fileName,
       sheetIndex,
       output,
+      quiet,
     ),
 ).pipe(
   Command.withDescription(
