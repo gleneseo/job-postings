@@ -524,7 +524,10 @@ describe("handleJobPostingsCommand", () => {
             timeoutSeconds,
           ).pipe(provideTestDoubles(googleTools));
 
-          assert.deepStrictEqual(yield* TestConsole.logLines, [banner]);
+          assert.deepStrictEqual(yield* TestConsole.logLines, [
+            banner,
+            fakeCsv,
+          ]);
         } finally {
           process.stdout.isTTY = originalIsTTY;
         }
@@ -549,7 +552,7 @@ describe("handleJobPostingsCommand", () => {
             timeoutSeconds,
           ).pipe(provideTestDoubles(googleTools));
 
-          assert.deepStrictEqual(yield* TestConsole.logLines, []);
+          assert.deepStrictEqual(yield* TestConsole.logLines, [fakeCsv]);
         } finally {
           process.stdout.isTTY = originalIsTTY;
         }
@@ -574,7 +577,7 @@ describe("handleJobPostingsCommand", () => {
             timeoutSeconds,
           ).pipe(provideTestDoubles(googleTools));
 
-          assert.deepStrictEqual(yield* TestConsole.logLines, []);
+          assert.deepStrictEqual(yield* TestConsole.logLines, [fakeCsv]);
         } finally {
           process.stdout.isTTY = originalIsTTY;
         }
