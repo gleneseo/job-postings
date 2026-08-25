@@ -427,7 +427,7 @@ describe("handleJobPostingsCommand", () => {
           output,
           quiet,
           timeoutSeconds,
-        ).pipe(provideTestDoubles(googleTools));
+        ).pipe(provideTestDoubles(googleTools), Effect.flip);
 
         expect(failure).toStrictEqual(new NoSheetDataError({ sheetIndex }));
         expect(Runtime.getErrorExitCode(failure)).toBe(33);
