@@ -5,12 +5,25 @@ import {
   NodeRuntime,
   NodeServices,
 } from "@effect/platform-node";
-import { Command } from "effect/unstable/cli";
+import { CliConfig, Command, GlobalFlag } from "effect/unstable/cli";
 import { OtlpSerialization, OtlpTracer } from "effect/unstable/observability";
 import packageJson from "../package.json" with { type: "json" };
 import jobPostingsCommand from "./cli/commands/job-postings-command.js";
 import GoogleTools from "./google/google-tools.js";
 import FileWriter from "./file-system/file-writer.js";
+
+/**
+ * Excludes the `--completions`, `--wizard`, and `--log-level` built-in
+ * flags, which aren't useful for this single-command CLI
+ */
+const CliConfigLayer = CliConfig.layer({
+  builtIns: GlobalFlag.BuiltIns.filter(
+    (flag) =>
+      flag !== GlobalFlag.Completions &&
+      flag !== GlobalFlag.Wizard &&
+      flag !== GlobalFlag.LogLevel,
+  ),
+});
 
 /**
  * Exports Effect spans to an OTLP collector when the standard
@@ -33,6 +46,7 @@ Command.run(jobPostingsCommand, { version: packageJson.version }).pipe(
       GoogleTools.layer,
       FileWriter.layer,
       ObservabilityLayer,
+      CliConfigLayer,
     ).pipe(Layer.provideMerge(NodeServices.layer)),
   ),
   NodeRuntime.runMain,
