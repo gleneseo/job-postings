@@ -1,6 +1,5 @@
-import { Console, Effect } from "effect";
-import banner from "../banner.js";
 import { Console, Duration, Effect } from "effect";
+import banner from "../banner.js";
 import GoogleTools from "../../google/google-tools.js";
 import MissingFolderIdError from "../../google/missing-folder-id-error.js";
 import FilePath from "../../helpers/file-path.js";
@@ -98,8 +97,6 @@ const handleJobPostingsCommand: (
     const auth = yield* googleTools.getAuth(keyFilePath);
 
     yield* logStatus(`Searching for folder [${folderName}].`);
-    const folder = yield* googleTools.getFolder(auth, folderName);
-    yield* Console.error(`Searching for folder [${folderName}].`);
     const folder = yield* googleTools.getFolder(auth, folderName, timeout);
 
     if (!folder.id) {

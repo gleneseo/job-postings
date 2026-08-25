@@ -590,6 +590,7 @@ describe("handleJobPostingsCommand", () => {
           sheetIndex,
           output,
           true,
+          timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools, fileWriter));
 
         expect(fileWriter.writeFile).toHaveBeenCalledExactlyOnceWith(
@@ -614,6 +615,7 @@ describe("handleJobPostingsCommand", () => {
         sheetIndex,
         output,
         true,
+        timeoutSeconds,
       ).pipe(provideTestDoubles(googleTools), Effect.flip);
 
       expect(failure).toStrictEqual(error);
@@ -639,6 +641,7 @@ describe("handleJobPostingsCommand", () => {
             sheetIndex,
             output,
             false,
+            timeoutSeconds,
           ).pipe(provideTestDoubles(googleTools));
 
           assert.deepStrictEqual(yield* TestConsole.logLines, [banner]);
@@ -664,6 +667,7 @@ describe("handleJobPostingsCommand", () => {
             sheetIndex,
             output,
             true,
+            timeoutSeconds,
           ).pipe(provideTestDoubles(googleTools));
 
           assert.deepStrictEqual(yield* TestConsole.logLines, []);
@@ -689,6 +693,7 @@ describe("handleJobPostingsCommand", () => {
             sheetIndex,
             output,
             false,
+            timeoutSeconds,
           ).pipe(provideTestDoubles(googleTools));
 
           assert.deepStrictEqual(yield* TestConsole.logLines, []);

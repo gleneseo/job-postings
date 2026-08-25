@@ -46,6 +46,9 @@ const quiet = Flag.boolean("quiet").pipe(
   Flag.withDefault(false),
   Flag.withDescription(
     "Suppress status messages; only runtime errors are printed (default: false)",
+  ),
+);
+
 const timeoutSeconds = Flag.integer("timeout").pipe(
   Flag.filter(
     (n) => n > 0,
@@ -60,10 +63,24 @@ const timeoutSeconds = Flag.integer("timeout").pipe(
 
 const jobPostingsCommand = Command.make(
   "job-postings",
-  { keyFilePath, folderName, fileName, sheetIndex, output, quiet },
-  ({ keyFilePath, folderName, fileName, sheetIndex, output, quiet }) =>
-  { keyFilePath, folderName, fileName, sheetIndex, output, timeoutSeconds },
-  ({ keyFilePath, folderName, fileName, sheetIndex, output, timeoutSeconds }) =>
+  {
+    keyFilePath,
+    folderName,
+    fileName,
+    sheetIndex,
+    output,
+    quiet,
+    timeoutSeconds,
+  },
+  ({
+    keyFilePath,
+    folderName,
+    fileName,
+    sheetIndex,
+    output,
+    quiet,
+    timeoutSeconds,
+  }) =>
     handleJobPostingsCommand(
       keyFilePath,
       folderName,
