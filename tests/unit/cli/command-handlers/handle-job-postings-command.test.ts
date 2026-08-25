@@ -407,6 +407,7 @@ describe("handleJobPostingsCommand", () => {
           fileName,
           sheetIndex,
           output,
+          quiet,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
 
         expect(failure).toStrictEqual(new NoSheetDataError({ sheetIndex }));
