@@ -1,4 +1,4 @@
-import { Array, Context, Effect, Layer, Option } from "effect";
+import { Array, Cause, Context, Duration, Effect, Layer, Option } from "effect";
 import FilePath from "../helpers/file-path.js";
 import { Auth, drive_v3, google } from "googleapis";
 import FolderName from "../helpers/folder-name.js";
@@ -39,11 +39,13 @@ class GoogleTools extends Context.Service<
      *
      * @param auth - Authenticated Google auth client with Drive access
      * @param folderName - Exact folder name to search for
+     * @param timeout - Maximum time to wait for the search request
      * @returns An Effect that resolves to the matching folders
      */
     readonly getFolders: (
       auth: Auth.GoogleAuth,
       folderName: typeof FolderName.Type,
+      timeout: Duration.Duration,
     ) => Effect.Effect<drive_v3.Schema$File[], FolderSearchError>;
 
     /**
@@ -52,12 +54,14 @@ class GoogleTools extends Context.Service<
      *
      * @param auth - Authenticated Google auth client with Drive access
      * @param folderName - Exact folder name to search for
+     * @param timeout - Maximum time to wait for the search request
      * @returns An Effect that resolves to the matching folder, or fails if
      * the search errors, no folder is found, or more than one folder matches
      */
     readonly getFolder: (
       auth: Auth.GoogleAuth,
       folderName: typeof FolderName.Type,
+      timeout: Duration.Duration,
     ) => Effect.Effect<
       drive_v3.Schema$File,
       FolderSearchError | FolderNotFoundError | DuplicateFoldersFoundError
@@ -70,12 +74,14 @@ class GoogleTools extends Context.Service<
      * @param auth - Authenticated Google auth client with Drive access
      * @param fileName - Exact file name to search for
      * @param folderId - ID of the folder to search within
+     * @param timeout - Maximum time to wait for the search request
      * @returns An Effect that resolves to the matching files
      */
     readonly getFiles: (
       auth: Auth.GoogleAuth,
       fileName: typeof FileName.Type,
       folderId: typeof FolderId.Type,
+      timeout: Duration.Duration,
     ) => Effect.Effect<drive_v3.Schema$File[], FileSearchError>;
 
     /**
@@ -85,6 +91,7 @@ class GoogleTools extends Context.Service<
      * @param auth - Authenticated Google auth client with Drive access
      * @param fileName - Exact file name to search for
      * @param folderId - ID of the folder to search within
+     * @param timeout - Maximum time to wait for the search request
      * @returns An Effect that resolves to the matching file, or fails if
      * the search errors, no file is found, or more than one file matches
      */
@@ -92,6 +99,7 @@ class GoogleTools extends Context.Service<
       auth: Auth.GoogleAuth,
       fileName: typeof FileName.Type,
       folderId: typeof FolderId.Type,
+      timeout: Duration.Duration,
     ) => Effect.Effect<
       drive_v3.Schema$File,
       FileSearchError | FileNotFoundError | DuplicateFilesFoundError
@@ -104,6 +112,7 @@ class GoogleTools extends Context.Service<
      * @param auth - Authenticated Google auth client with Sheets access
      * @param fileId - ID of the spreadsheet file
      * @param sheetIndex - Zero-based index of the sheet to retrieve
+     * @param timeout - Maximum time to wait for each fetch request
      * @returns An Effect that resolves to the sheet's values as rows of
      * cells, or fails if either fetch errors or the sheet index is out of
      * range
@@ -112,6 +121,7 @@ class GoogleTools extends Context.Service<
       auth: Auth.GoogleAuth,
       fileId: typeof FileId.Type,
       sheetIndex: typeof SheetIndex.Type,
+      timeout: Duration.Duration,
     ) => Effect.Effect<
       string[][],
       SheetFetchError | InvalidSheetIndexError | SheetValuesFetchError
@@ -134,6 +144,7 @@ class GoogleTools extends Context.Service<
     const getFolders = (
       auth: Auth.GoogleAuth,
       folderName: typeof FolderName.Type,
+      timeout: Duration.Duration,
     ) =>
       Effect.tryPromise({
         try: async () => {
@@ -148,13 +159,27 @@ class GoogleTools extends Context.Service<
           return folderResult.data.files ?? [];
         },
         catch: (e) => new FolderSearchError({ cause: e }),
-      }).pipe(Effect.withSpan("google-tools.get-folders"));
+      }).pipe(
+        Effect.timeoutOrElse({
+          duration: timeout,
+          orElse: () =>
+            Effect.fail(
+              new FolderSearchError({
+                cause: new Cause.TimeoutError(
+                  `Folder search timed out after ${Duration.format(timeout)}`,
+                ),
+              }),
+            ),
+        }),
+        Effect.withSpan("google-tools.get-folders"),
+      );
 
     const getFolder = Effect.fn("google-tools.get-folder")(function* (
       auth: Auth.GoogleAuth,
       folderName: typeof FolderName.Type,
+      timeout: Duration.Duration,
     ) {
-      const folders = yield* getFolders(auth, folderName);
+      const folders = yield* getFolders(auth, folderName, timeout);
       if (folders.length > 1) {
         return yield* DuplicateFoldersFoundError.fromArray(folders);
       }
@@ -171,6 +196,7 @@ class GoogleTools extends Context.Service<
       auth: Auth.GoogleAuth,
       fileName: typeof FileName.Type,
       folderId: typeof FolderId.Type,
+      timeout: Duration.Duration,
     ) =>
       Effect.tryPromise({
         try: async () => {
@@ -185,14 +211,28 @@ class GoogleTools extends Context.Service<
           return searchResult.data.files ?? [];
         },
         catch: (e) => new FileSearchError({ cause: e }),
-      }).pipe(Effect.withSpan("google-tools.get-files"));
+      }).pipe(
+        Effect.timeoutOrElse({
+          duration: timeout,
+          orElse: () =>
+            Effect.fail(
+              new FileSearchError({
+                cause: new Cause.TimeoutError(
+                  `File search timed out after ${Duration.format(timeout)}`,
+                ),
+              }),
+            ),
+        }),
+        Effect.withSpan("google-tools.get-files"),
+      );
 
     const getFile = Effect.fn("google-tools.get-file")(function* (
       auth: Auth.GoogleAuth,
       fileName: typeof FileName.Type,
       folderId: typeof FolderId.Type,
+      timeout: Duration.Duration,
     ) {
-      const files = yield* getFiles(auth, fileName, folderId);
+      const files = yield* getFiles(auth, fileName, folderId, timeout);
       if (files.length > 1) {
         return yield* DuplicateFilesFoundError.fromArray(files);
       }
@@ -210,6 +250,7 @@ class GoogleTools extends Context.Service<
         auth: Auth.GoogleAuth,
         fileId: typeof FileId.Type,
         sheetIndex: typeof SheetIndex.Type,
+        timeout: Duration.Duration,
       ) {
         const sheets = google.sheets({ version: "v4", auth });
 
@@ -219,7 +260,19 @@ class GoogleTools extends Context.Service<
               .get({ spreadsheetId: fileId })
               .then((x) => x.data.sheets ?? []),
           catch: (e) => new SheetFetchError({ cause: e }),
-        });
+        }).pipe(
+          Effect.timeoutOrElse({
+            duration: timeout,
+            orElse: () =>
+              Effect.fail(
+                new SheetFetchError({
+                  cause: new Cause.TimeoutError(
+                    `Sheet fetch timed out after ${Duration.format(timeout)}`,
+                  ),
+                }),
+              ),
+          }),
+        );
 
         const targetSheet = yield* Array.get(availableSheets, sheetIndex).pipe(
           Option.match({
@@ -241,7 +294,20 @@ class GoogleTools extends Context.Service<
               })
               .then((x) => x.data.values ?? []),
           catch: (e) => new SheetValuesFetchError({ sheetIndex, cause: e }),
-        });
+        }).pipe(
+          Effect.timeoutOrElse({
+            duration: timeout,
+            orElse: () =>
+              Effect.fail(
+                new SheetValuesFetchError({
+                  sheetIndex,
+                  cause: new Cause.TimeoutError(
+                    `Sheet values fetch timed out after ${Duration.format(timeout)}`,
+                  ),
+                }),
+              ),
+          }),
+        );
       },
     );
 
