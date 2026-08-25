@@ -17,8 +17,6 @@ import SheetValuesFetchError from "../../../../src/google/sheet-values-fetch-err
 import InvalidSheetIndexError from "../../../../src/google/invalid-sheet-index-error.js";
 import NoSheetDataError from "../../../../src/google/no-sheet-data-error.js";
 import GoogleTools from "../../../../src/google/google-tools.js";
-import FileWriter from "../../../../src/file-system/file-writer.js";
-import FileWriteError from "../../../../src/file-system/file-write-error.js";
 import FilePath from "../../../../src/helpers/file-path.js";
 import FolderName from "../../../../src/helpers/folder-name.js";
 import FileName from "../../../../src/helpers/file-name.js";
@@ -32,7 +30,6 @@ const keyFilePath = FilePath.make("/tmp/key.json");
 const folderName = FolderName.make("reports");
 const fileName = FileName.make("Job Postings");
 const sheetIndex = SheetIndex.make(0);
-const output = FilePath.make("job-postings.csv");
 const quiet = false;
 const timeoutSeconds = TimeoutSeconds.make(30);
 const timeout = Duration.seconds(timeoutSeconds);
@@ -45,7 +42,7 @@ const msgSearchingForFolder = `Searching for folder [${folderName}].`;
 const msgSearchingForFile = `Searching for file [${fileName}] in folder [${folderName}].`;
 const msgFetchingSheetValues = (index: typeof SheetIndex.Type) =>
   `Fetching values for sheet at index [${index.toString()}] in file [${fileName}].`;
-const msgSortingAndWriting = `Sorting and writing values to [${output}].`;
+const msgSorting = `Sorting values from [${fileName}].`;
 
 const makeGoogleToolsTestDouble = (overrides: {
   getAuth?: (path: typeof FilePath.Type) => Effect.Effect<Auth.GoogleAuth>;
@@ -86,46 +83,28 @@ const makeGoogleToolsTestDouble = (overrides: {
   getFiles: vi.fn(() => Effect.die("not implemented by this test double")),
 });
 
-const makeFileWriterTestDouble = (overrides: {
-  writeFile?: (
-    path: typeof FilePath.Type,
-    data: string,
-  ) => Effect.Effect<void, FileWriteError>;
-}) => ({
-  writeFile: vi.fn(overrides.writeFile ?? (() => Effect.void)),
-});
-
 const provideTestDoubles = (
   googleTools: ReturnType<typeof makeGoogleToolsTestDouble>,
-  fileWriter: ReturnType<
-    typeof makeFileWriterTestDouble
-  > = makeFileWriterTestDouble({}),
 ) =>
   Effect.provide(
-    Layer.mergeAll(
-      Layer.succeed(GoogleTools, googleTools),
-      Layer.succeed(FileWriter, fileWriter),
-      TestConsole.layer,
-    ),
+    Layer.mergeAll(Layer.succeed(GoogleTools, googleTools), TestConsole.layer),
   );
 
 describe("handleJobPostingsCommand", () => {
   it.effect(
-    "should authenticate, search for the folder and file, sort and write the sheet, and print the outcome",
+    "should authenticate, search for the folder and file, sort the sheet, and print the outcome as CSV to standard out",
     () =>
       Effect.gen(function* () {
         const googleTools = makeGoogleToolsTestDouble({});
-        const fileWriter = makeFileWriterTestDouble({});
 
         yield* handleJobPostingsCommand(
           keyFilePath,
           folderName,
           fileName,
           sheetIndex,
-          output,
           quiet,
           timeoutSeconds,
-        ).pipe(provideTestDoubles(googleTools, fileWriter));
+        ).pipe(provideTestDoubles(googleTools));
 
         expect(googleTools.getAuth).toHaveBeenCalledExactlyOnceWith(
           keyFilePath,
@@ -147,17 +126,14 @@ describe("handleJobPostingsCommand", () => {
           sheetIndex,
           timeout,
         );
-        expect(fileWriter.writeFile).toHaveBeenCalledExactlyOnceWith(
-          output,
-          fakeCsv,
-        );
+        assert.deepStrictEqual(yield* TestConsole.logLines, [fakeCsv]);
         assert.deepStrictEqual(yield* TestConsole.errorLines, [
           msgAuthenticating,
           msgSearchingForFolder,
           msgSearchingForFile,
           msgFetchingSheetValues(sheetIndex),
-          msgSortingAndWriting,
-          `Success. File written at [${output}].`,
+          msgSorting,
+          "Success.",
         ]);
       }),
   );
@@ -176,7 +152,6 @@ describe("handleJobPostingsCommand", () => {
           folderName,
           fileName,
           sheetIndex,
-          output,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -208,7 +183,6 @@ describe("handleJobPostingsCommand", () => {
           folderName,
           fileName,
           sheetIndex,
-          output,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -237,7 +211,6 @@ describe("handleJobPostingsCommand", () => {
           folderName,
           fileName,
           sheetIndex,
-          output,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -269,7 +242,6 @@ describe("handleJobPostingsCommand", () => {
           folderName,
           fileName,
           sheetIndex,
-          output,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -301,7 +273,6 @@ describe("handleJobPostingsCommand", () => {
           folderName,
           fileName,
           sheetIndex,
-          output,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -331,7 +302,6 @@ describe("handleJobPostingsCommand", () => {
           folderName,
           fileName,
           sheetIndex,
-          output,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -364,7 +334,6 @@ describe("handleJobPostingsCommand", () => {
           folderName,
           fileName,
           sheetIndex,
-          output,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -395,7 +364,6 @@ describe("handleJobPostingsCommand", () => {
           folderName,
           fileName,
           sheetIndex,
-          output,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -424,11 +392,9 @@ describe("handleJobPostingsCommand", () => {
           folderName,
           fileName,
           sheetIndex,
-          output,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
-
         expect(failure).toStrictEqual(new NoSheetDataError({ sheetIndex }));
         expect(Runtime.getErrorExitCode(failure)).toBe(33);
         assert.deepStrictEqual(yield* TestConsole.errorLines, [
@@ -459,7 +425,6 @@ describe("handleJobPostingsCommand", () => {
           folderName,
           fileName,
           invalidSheetIndex,
-          output,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -492,7 +457,6 @@ describe("handleJobPostingsCommand", () => {
           folderName,
           fileName,
           sheetIndex,
-          output,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -526,7 +490,6 @@ describe("handleJobPostingsCommand", () => {
           folderName,
           fileName,
           sheetIndex,
-          output,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -544,88 +507,6 @@ describe("handleJobPostingsCommand", () => {
   );
 
   it.effect(
-    "should fail with a distinct exit code on a file write failure after logging it",
-    () =>
-      Effect.gen(function* () {
-        const error = new FileWriteError({ cause: new Error("disk full") });
-        const googleTools = makeGoogleToolsTestDouble({});
-        const fileWriter = makeFileWriterTestDouble({
-          writeFile: () => Effect.fail(error),
-        });
-
-        const failure = yield* handleJobPostingsCommand(
-          keyFilePath,
-          folderName,
-          fileName,
-          sheetIndex,
-          output,
-          quiet,
-          timeoutSeconds,
-        ).pipe(provideTestDoubles(googleTools, fileWriter), Effect.flip);
-
-        expect(failure).toStrictEqual(error);
-        expect(Runtime.getErrorExitCode(failure)).toBe(40);
-        assert.deepStrictEqual(yield* TestConsole.errorLines, [
-          msgAuthenticating,
-          msgSearchingForFolder,
-          msgSearchingForFile,
-          msgFetchingSheetValues(sheetIndex),
-          msgSortingAndWriting,
-          `❌ Error while writing file to [${output}]. Please check your setup and try again.`,
-        ]);
-      }),
-  );
-
-  it.effect(
-    "should print no status messages and still write the file when quiet",
-    () =>
-      Effect.gen(function* () {
-        const googleTools = makeGoogleToolsTestDouble({});
-        const fileWriter = makeFileWriterTestDouble({});
-
-        yield* handleJobPostingsCommand(
-          keyFilePath,
-          folderName,
-          fileName,
-          sheetIndex,
-          output,
-          true,
-          timeoutSeconds,
-        ).pipe(provideTestDoubles(googleTools, fileWriter));
-
-        expect(fileWriter.writeFile).toHaveBeenCalledExactlyOnceWith(
-          output,
-          fakeCsv,
-        );
-        assert.deepStrictEqual(yield* TestConsole.errorLines, []);
-      }),
-  );
-
-  it.effect("should still print the runtime error message when quiet", () =>
-    Effect.gen(function* () {
-      const error = new FolderNotFoundError({ folderName });
-      const googleTools = makeGoogleToolsTestDouble({
-        getFolder: () => Effect.fail(error),
-      });
-
-      const failure = yield* handleJobPostingsCommand(
-        keyFilePath,
-        folderName,
-        fileName,
-        sheetIndex,
-        output,
-        true,
-        timeoutSeconds,
-      ).pipe(provideTestDoubles(googleTools), Effect.flip);
-
-      expect(failure).toStrictEqual(error);
-      assert.deepStrictEqual(yield* TestConsole.errorLines, [
-        `❌ Could not find folder [${folderName}]. Make sure the folder exists and that the service account has access.`,
-      ]);
-    }),
-  );
-
-  it.effect(
     "should print the banner on an interactive terminal when not quiet",
     () =>
       Effect.gen(function* () {
@@ -639,12 +520,14 @@ describe("handleJobPostingsCommand", () => {
             folderName,
             fileName,
             sheetIndex,
-            output,
             false,
             timeoutSeconds,
           ).pipe(provideTestDoubles(googleTools));
 
-          assert.deepStrictEqual(yield* TestConsole.logLines, [banner]);
+          assert.deepStrictEqual(yield* TestConsole.logLines, [
+            banner,
+            fakeCsv,
+          ]);
         } finally {
           process.stdout.isTTY = originalIsTTY;
         }
@@ -665,12 +548,11 @@ describe("handleJobPostingsCommand", () => {
             folderName,
             fileName,
             sheetIndex,
-            output,
             true,
             timeoutSeconds,
           ).pipe(provideTestDoubles(googleTools));
 
-          assert.deepStrictEqual(yield* TestConsole.logLines, []);
+          assert.deepStrictEqual(yield* TestConsole.logLines, [fakeCsv]);
         } finally {
           process.stdout.isTTY = originalIsTTY;
         }
@@ -691,12 +573,11 @@ describe("handleJobPostingsCommand", () => {
             folderName,
             fileName,
             sheetIndex,
-            output,
             false,
             timeoutSeconds,
           ).pipe(provideTestDoubles(googleTools));
 
-          assert.deepStrictEqual(yield* TestConsole.logLines, []);
+          assert.deepStrictEqual(yield* TestConsole.logLines, [fakeCsv]);
         } finally {
           process.stdout.isTTY = originalIsTTY;
         }

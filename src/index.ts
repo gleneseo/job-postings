@@ -10,7 +10,6 @@ import { OtlpSerialization, OtlpTracer } from "effect/unstable/observability";
 import packageJson from "../package.json" with { type: "json" };
 import jobPostingsCommand from "./cli/commands/job-postings-command.js";
 import GoogleTools from "./google/google-tools.js";
-import FileWriter from "./file-system/file-writer.js";
 
 /**
  * Excludes the `--completions`, `--wizard`, and `--log-level` built-in
@@ -42,12 +41,9 @@ const ObservabilityLayer = OtlpTracer.layerFromConfig({
 
 Command.run(jobPostingsCommand, { version: packageJson.version }).pipe(
   Effect.provide(
-    Layer.mergeAll(
-      GoogleTools.layer,
-      FileWriter.layer,
-      ObservabilityLayer,
-      CliConfigLayer,
-    ).pipe(Layer.provideMerge(NodeServices.layer)),
+    Layer.mergeAll(GoogleTools.layer, ObservabilityLayer, CliConfigLayer).pipe(
+      Layer.provideMerge(NodeServices.layer),
+    ),
   ),
   NodeRuntime.runMain,
 );

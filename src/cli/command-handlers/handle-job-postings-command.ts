@@ -12,12 +12,10 @@ import MissingFileIdError from "../../google/missing-file-id-error.js";
 import FileId from "../../helpers/file-id.js";
 import sortValues from "../../helpers/sort-values.js";
 import createCsv from "../../helpers/create-csv.js";
-import FileWriter from "../../file-system/file-writer.js";
 import DuplicateFilesFoundError from "../../google/duplicate-files-found-error.js";
 import DuplicateFoldersFoundError from "../../google/duplicate-folders-found-error.js";
 import FileNotFoundError from "../../google/file-not-found-error.js";
 import FileSearchError from "../../google/file-search-error.js";
-import FileWriteError from "../../file-system/file-write-error.js";
 import FolderNotFoundError from "../../google/folder-not-found-error.js";
 import FolderSearchError from "../../google/folder-search-error.js";
 import InvalidSheetIndexError from "../../google/invalid-sheet-index-error.js";
@@ -35,7 +33,6 @@ type JobPostingsError =
   | DuplicateFoldersFoundError
   | FileNotFoundError
   | FileSearchError
-  | FileWriteError
   | FolderNotFoundError
   | FolderSearchError
   | InvalidSheetIndexError
@@ -47,9 +44,9 @@ type JobPostingsError =
 
 /**
  * Authenticates with Google using the given key file, locates the target
- * sheet by folder and file name, sorts its values, and writes them to disk
- * as CSV, logging progress along the way and, for a domain error, a
- * human-readable message before failing with it
+ * sheet by folder and file name, sorts its values, and prints them to
+ * standard out as CSV, logging progress to standard error along the way
+ * and, for a domain error, a human-readable message before failing with it
  *
  * @param keyFilePath - Path to the Google service account JSON key file
  * @param folderName - Name of the Google Drive folder containing the sheet
@@ -69,21 +66,18 @@ const handleJobPostingsCommand: (
   folderName: typeof FolderName.Type,
   fileName: typeof FileName.Type,
   sheetIndex: typeof SheetIndex.Type,
-  output: typeof FilePath.Type,
   quiet: boolean,
   timeoutSeconds: typeof TimeoutSeconds.Type,
-) => Effect.Effect<void, JobPostingsError, GoogleTools | FileWriter> = (
+) => Effect.Effect<void, JobPostingsError, GoogleTools> = (
   keyFilePath,
   folderName,
   fileName,
   sheetIndex,
-  output,
   quiet,
   timeoutSeconds,
 ) =>
   Effect.gen(function* () {
     const googleTools = yield* GoogleTools;
-    const fileWriter = yield* FileWriter;
     const timeout = Duration.seconds(timeoutSeconds);
 
     const logStatus = (message: string) =>
@@ -131,11 +125,11 @@ const handleJobPostingsCommand: (
       return yield* new NoSheetDataError({ sheetIndex });
     }
 
-    yield* logStatus(`Sorting and writing values to [${output}].`);
+    yield* Console.error(`Sorting values from [${fileName}].`);
     yield* sortValues(values).pipe(
       Effect.andThen((x) => createCsv(x)),
-      Effect.andThen((x) => fileWriter.writeFile(output, x)),
-      Effect.andThen(() => logStatus(`Success. File written at [${output}].`)),
+      Effect.andThen((x) => Console.log(x)),
+      Effect.andThen(() => Console.error("Success.")),
     );
   }).pipe(
     Effect.withSpan("job-postings-command"),
@@ -157,10 +151,6 @@ const handleJobPostingsCommand: (
       FileSearchError: (e) =>
         Console.error(
           `❌ Error while searching for file [${fileName}] in folder [${folderName}]. Please check your setup and try again.`,
-        ).pipe(Effect.andThen(() => Effect.fail(e))),
-      FileWriteError: (e) =>
-        Console.error(
-          `❌ Error while writing file to [${output}]. Please check your setup and try again.`,
         ).pipe(Effect.andThen(() => Effect.fail(e))),
       FolderNotFoundError: (e) =>
         Console.error(
