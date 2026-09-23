@@ -8,12 +8,12 @@ import SheetIndex from "../../helpers/sheet-index.js";
 import TimeoutSeconds from "../../helpers/timeout-seconds.js";
 import packageJson from "../../../package.json" with { type: "json" };
 
-const keyFilePath = Argument.file("key-file-path", { mustExist: true }).pipe(
+const keyFilePath = Argument.File("key-file-path", { mustExist: true }).pipe(
   Argument.withSchema(FilePath),
   Argument.withDescription("The path to the JSON key file"),
 );
 
-const folderName = Flag.string("folder-name").pipe(
+const folderName = Flag.String("folder-name").pipe(
   Flag.withSchema(FolderName),
   Flag.withDefault(FolderName.make("Claude")),
   Flag.withDescription(
@@ -21,20 +21,20 @@ const folderName = Flag.string("folder-name").pipe(
   ),
 );
 
-const fileName = Flag.string("file-name").pipe(
+const fileName = Flag.String("file-name").pipe(
   Flag.withSchema(FileName),
   Flag.withDefault(FileName.make("Job Postings")),
   Flag.withDescription('The sheet file name (default: "Job Postings")'),
 );
 
-const sheetIndex = Flag.integer("sheet-index").pipe(
+const sheetIndex = Flag.Int("sheet-index").pipe(
   Flag.withSchema(SheetIndex),
   Flag.withAlias("i"),
   Flag.withDefault(SheetIndex.make(0)),
   Flag.withDescription("The 0-based index of the target sheet (default: 0)"),
 );
 
-const quiet = Flag.boolean("quiet").pipe(
+const quiet = Flag.Boolean("quiet").pipe(
   Flag.withAlias("q"),
   Flag.withDefault(false),
   Flag.withDescription(
@@ -42,7 +42,7 @@ const quiet = Flag.boolean("quiet").pipe(
   ),
 );
 
-const timeoutSeconds = Flag.integer("timeout").pipe(
+const timeoutSeconds = Flag.Int("timeout").pipe(
   Flag.filter(
     (n) => n > 0,
     (n) => `--timeout must be greater than 0 seconds (got ${n.toString()})`,
