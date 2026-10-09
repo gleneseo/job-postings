@@ -1,5 +1,5 @@
 import type { Effect } from "effect";
-import { Argument, Command, type CliError, Flag } from "effect/unstable/cli";
+import { Argument, Command, type CliError, Flag } from "effect/cli";
 import handleJobPostingsCommand from "../command-handlers/handle-job-postings-command.js";
 import FilePath from "../../helpers/file-path.js";
 import FolderName from "../../helpers/folder-name.js";

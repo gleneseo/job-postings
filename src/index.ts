@@ -5,8 +5,8 @@ import {
   NodeRuntime,
   NodeServices,
 } from "@effect/platform-node";
-import { CliConfig, Command, GlobalFlag } from "effect/unstable/cli";
-import { OtlpSerialization, OtlpTracer } from "effect/unstable/observability";
+import { CliConfig, Command, GlobalFlag } from "effect/cli";
+import { OtlpSerialization, OtlpTracer } from "effect/observability";
 import packageJson from "../package.json" with { type: "json" };
 import jobPostingsCommand from "./cli/commands/job-postings-command.js";
 import GoogleTools from "./google/google-tools.js";
