@@ -264,6 +264,20 @@ The CLI's spans (see [`Effect.withSpan`](https://effect.website)) only export on
 
 Traces show up in Grafana at [http://localhost:3000](http://localhost:3000) under the Tempo data source (Explore → Tempo → search by service name).
 
+## Updating dependencies
+
+Effect packages (`effect`, `@effect/*`) are bumped with the `/check-effect-update` Claude Code skill, which reads the changelog for every release in between, flags breaking changes, then applies and verifies the bump. After an Effect bump, check out the matching tag (e.g. `effect@4.1.3`) in the local Effect source clone described in [AGENTS.md](./AGENTS.md) so it stays in step with the installed version.
+
+For everything else, after any bump run `npm run build` (formatting, lint, typecheck, coverage, Docker image). Some packages must move together or stay put:
+
+- **`vitest` and `@vitest/coverage-v8`** — keep them on the same version; the coverage package peers on the exact vitest version.
+- **`testcontainers` and `@testcontainers/postgresql`** — update as a pair.
+- **`@commitlint/cli` and `@commitlint/config-conventional`** — update as a pair.
+- **`prettier`** — pinned to an exact version so formatting output doesn't change unexpectedly. Bump it deliberately and run `npm run prettier:check`.
+- **`@types/node`** — stay on the `24.x` line to match the Node 24 runtime and Docker image.
+- **`typescript`** — stay on 6.x until `typescript-eslint` supports 7 and `effect-language-service patch` (run by `npm install`'s `prepare` script) is confirmed to work with it.
+- **`googleapis`** — the automated tests don't call Google, so after a bump run the CLI against a real sheet (`npm start -- ./key.json`) to confirm authentication and the Drive and Sheets calls still work.
+
 ## Commit messages
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/). See [AGENTS.md](./AGENTS.md) for details.
