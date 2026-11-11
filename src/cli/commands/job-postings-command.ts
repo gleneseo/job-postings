@@ -1,5 +1,5 @@
 import type { Effect } from "effect";
-import { Argument, Command, type CliError, Flag } from "effect/cli";
+import { Argument, type CliError, Command, Flag } from "effect/cli";
 import handleJobPostingsCommand from "../command-handlers/handle-job-postings-command.js";
 import FilePath from "../../helpers/file-path.js";
 import FolderName from "../../helpers/folder-name.js";
@@ -54,7 +54,24 @@ const timeoutSeconds = Flag.Int("timeout").pipe(
   ),
 );
 
-const jobPostingsCommandCore = Command.make(
+type HandlerEffect = ReturnType<typeof handleJobPostingsCommand>;
+
+const helpCommand = Command.make(
+  "help",
+  {},
+  // The return type annotation breaks the type-inference cycle with
+  // `jobPostingsCommand`, which is declared below and referenced in the body.
+  (): Effect.Effect<
+    void,
+    Effect.Error<HandlerEffect> | CliError.CliError,
+    Effect.Services<HandlerEffect> | Command.Environment
+  > =>
+    Command.runWith(jobPostingsCommand, { version: packageJson.version })([
+      "--help",
+    ]),
+).pipe(Command.withDescription("Show the application help"));
+
+const jobPostingsCommand = Command.make(
   "job-postings",
   {
     keyFilePath,
@@ -77,28 +94,6 @@ const jobPostingsCommandCore = Command.make(
   Command.withDescription(
     "Sort a Google Sheet's job postings and print them to standard out as CSV",
   ),
-);
-
-type HandlerEffect = ReturnType<typeof handleJobPostingsCommand>;
-
-const helpCommand = Command.make(
-  "help",
-  {},
-  // The return type annotation breaks the type-inference cycle with
-  // `jobPostingsCommand`, which is declared below and referenced in the body.
-  // Without it, referencing `jobPostingsCommandCore` instead would compile,
-  // but would drop "help" from its own SUBCOMMANDS listing.
-  (): Effect.Effect<
-    void,
-    Effect.Error<HandlerEffect> | CliError.CliError,
-    Effect.Services<HandlerEffect> | Command.Environment
-  > =>
-    Command.runWith(jobPostingsCommand, { version: packageJson.version })([
-      "--help",
-    ]),
-).pipe(Command.withDescription("Show the application help"));
-
-const jobPostingsCommand = jobPostingsCommandCore.pipe(
   Command.withSubcommands([helpCommand]),
 );
 
