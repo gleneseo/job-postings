@@ -1,5 +1,7 @@
 import type { Effect } from "effect";
 import { Argument, type CliError, Command, Flag } from "effect/cli";
+import gmailCommand from "./gmail-command.js";
+import handleGmailCommand from "../command-handlers/handle-gmail-command.js";
 import handleJobPostingsCommand from "../command-handlers/handle-job-postings-command.js";
 import FilePath from "../../helpers/file-path.js";
 import FolderName from "../../helpers/folder-name.js";
@@ -54,7 +56,9 @@ const timeoutSeconds = Flag.Int("timeout").pipe(
   ),
 );
 
-type HandlerEffect = ReturnType<typeof handleJobPostingsCommand>;
+type HandlerEffect =
+  | ReturnType<typeof handleJobPostingsCommand>
+  | ReturnType<typeof handleGmailCommand>;
 
 const helpCommand = Command.make(
   "help",
@@ -94,7 +98,7 @@ const jobPostingsCommand = Command.make(
   Command.withDescription(
     "Sort a Google Sheet's job postings and print them to standard out as CSV",
   ),
-  Command.withSubcommands([helpCommand]),
+  Command.withSubcommands([helpCommand, gmailCommand]),
 );
 
 export default jobPostingsCommand;
