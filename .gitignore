@@ -157,3 +157,6 @@ vite.config.ts.timestamp-*
 PLAN.md
 .claude/worktrees/
 .workmux/
+
+# Emails saved by the gmail command's --save-files
+output/

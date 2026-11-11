@@ -105,6 +105,76 @@ Each domain error the CLI can fail with exits with its own code, so scripts can 
 
 A request that exceeds `--timeout` fails with the same error and exit code its underlying call would otherwise use (e.g. a folder search that times out is a `FolderSearchError`, exit `10`) — timing out doesn't introduce a separate code.
 
+## Gmail subcommand
+
+The `gmail` subcommand downloads emails from one or more senders (an address like `jobs@example.com`, or a whole domain like `example.com`) with the Gmail API. It replaces the standalone `gmail-downloader` application and keeps its files, so an existing credentials file, token, and database keep working. Each email is:
+
+- stored in a local SQLite file, so later runs only fetch new messages,
+- printed to standard out as a table, oldest first, and
+- optionally saved as a plain-text file (`--save-files`).
+
+The subcommand is read-only: it requests only the `gmail.readonly` scope and never modifies or deletes your mail. Progress messages are logged to standard error, keeping standard out free for the table.
+
+### Google OAuth client setup
+
+Unlike the service account used above, Gmail needs an OAuth client, because it reads your own mailbox. Create one once, for free:
+
+1. In the [Google Cloud Console](https://console.cloud.google.com/), select or create a project and enable the [Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com) for it.
+2. Open **APIs & Services → OAuth consent screen** (or **Google Auth Platform**), click **Get started**, and choose **External** as the audience (**Internal** only for a Google Workspace mailbox that belongs to your organization).
+3. Under **Audience**, add the Gmail address you will download from as a **test user**. While the app is in "Testing" status, only test users can authorize it.
+4. Open **APIs & Services → Credentials → Create credentials → OAuth client ID**, choose the **Desktop app** application type, and download the JSON file.
+5. Move it to the default location, or pass its path with `--credentials`:
+
+```sh
+mkdir -p ~/.config/gmail-downloader
+mv ~/Downloads/client_secret_*.json ~/.config/gmail-downloader/access.json
+```
+
+Treat this file as a secret.
+
+### Usage
+
+```sh
+npm start -- gmail [flags]
+```
+
+| Flag                  | Description                                                                                                                                                                      | Default                                      |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `--sender`, `-s`      | An email address or domain to search for (`from:` in Gmail). Repeat it for several senders; an email from any of them matches. Without it, every inbox email is downloaded.      | —                                            |
+| `--credentials`, `-c` | The path to the Google OAuth client JSON file                                                                                                                                    | `~/.config/gmail-downloader/access.json`     |
+| `--db`, `-d`          | The SQLite file to write emails to                                                                                                                                               | `~/.config/gmail-downloader/emails.sqlite`   |
+| `--token`, `-t`       | Where to cache the OAuth token                                                                                                                                                   | `~/.config/gmail-downloader/token.json`      |
+| `--save-files[=dir]`  | Also save each email as `<subject>.txt` (`.html` if it has only an HTML body) directly in `dir`, including emails already in the database. The directory must be given with `=`. | off; `output` when the flag has no directory |
+
+For example:
+
+```sh
+# Every email in the inbox
+npm start -- gmail
+
+# Several senders at once, also saving each email to files in output/
+npm start -- gmail --sender linkedin.com --sender ziprecruiter.com --save-files
+
+# A single address, saving files to a chosen directory
+npm start -- gmail --sender jobs@example.com --save-files=./emails
+```
+
+The first run opens your browser to a Google consent page. Choose the test user, click **Advanced → Go to <app name> (unsafe)** past the "Google hasn't verified this app" warning (expected, since you created the app), and approve read-only access. The token is then cached, so later runs don't open the browser. While the consent screen is in "Testing" status, Google expires the token after about 7 days; delete the token file and run again to re-authorize.
+
+Saved files have `From`, `To`, `Subject`, and `Received` headers followed by the plain-text body. Control characters, replacement characters, lone surrogates, and byte order marks are stripped, and line breaks in header values are collapsed. If two emails share a subject, the later one's file name gets its Gmail message ID appended.
+
+`gmail` fails with its own exit codes:
+
+| Exit code | Error                      | Meaning                                                |
+| --------- | -------------------------- | ------------------------------------------------------ |
+| `40`      | `CredentialsNotFoundError` | The credentials file does not exist.                   |
+| `41`      | `CredentialsReadError`     | The credentials file is not a valid OAuth client file. |
+| `42`      | `GmailAuthError`           | Authorizing with Gmail, or caching the token, failed.  |
+| `43`      | `GmailListError`           | Searching Gmail for matching messages failed.          |
+| `44`      | `GmailFetchError`          | Fetching or parsing a message failed.                  |
+| `45`      | `EmailStoreError`          | Reading or writing the SQLite database failed.         |
+| `46`      | `EmailFilesWriteError`     | Writing the email files failed.                        |
+
 ## Scripts
 
 | Script                     | Description                                                                                |

@@ -9,6 +9,8 @@ import { CliConfig, Command, GlobalFlag } from "effect/cli";
 import { OtlpSerialization, OtlpTracer } from "effect/observability";
 import packageJson from "../package.json" with { type: "json" };
 import jobPostingsCommand from "./cli/commands/job-postings-command.js";
+import EmailStore from "./gmail/email-store.js";
+import GmailTools from "./gmail/gmail-tools.js";
 import GoogleTools from "./google/google-tools.js";
 
 /**
@@ -41,9 +43,13 @@ const ObservabilityLayer = OtlpTracer.layerFromConfig({
 
 Command.run(jobPostingsCommand, { version: packageJson.version }).pipe(
   Effect.provide(
-    Layer.mergeAll(GoogleTools.layer, ObservabilityLayer, CliConfigLayer).pipe(
-      Layer.provideMerge(NodeServices.layer),
-    ),
+    Layer.mergeAll(
+      GoogleTools.layer,
+      GmailTools.layer,
+      EmailStore.layer,
+      ObservabilityLayer,
+      CliConfigLayer,
+    ).pipe(Layer.provideMerge(NodeServices.layer)),
   ),
   NodeRuntime.runMain,
 );
