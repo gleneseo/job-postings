@@ -274,7 +274,7 @@ For everything else, after any bump run `npm run build` (formatting, lint, typec
 - **`testcontainers` and `@testcontainers/postgresql`** — update as a pair.
 - **`@commitlint/cli` and `@commitlint/config-conventional`** — update as a pair.
 - **`prettier`** — pinned to an exact version so formatting output doesn't change unexpectedly. Bump it deliberately and run `npm run prettier:check`.
-- **`@types/node`** — stay on the `24.x` line to match the Node 24 runtime and Docker image.
+- **`@types/node`** — stay on the `26.x` line to match the Node 26 runtime and Docker image.
 - **`typescript`** — stay on 6.x until `typescript-eslint` supports 7 and `effect-language-service patch` (run by `npm install`'s `prepare` script) is confirmed to work with it.
 - **`googleapis`** — the automated tests don't call Google, so after a bump run the CLI against a real sheet (`npm start -- ./key.json`) to confirm authentication and the Drive and Sheets calls still work.
 
