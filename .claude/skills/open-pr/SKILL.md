@@ -20,7 +20,7 @@ commit hash.
    there's nothing to commit yet, a PR still needs a non-default branch to
    exist.
    - Name the branch `<type>/<kebab-summary>` (e.g. `fix/handle-empty-input`),
-     using the same `type` values as [AGENTS.md](../../../AGENTS.md)'s
+     using the same `type` values as [CLAUDE.md](../../../CLAUDE.md)'s
      Conventional Commits section (`feat`, `fix`, `chore`, `docs`, `style`,
      `refactor`, `perf`, `test`, `build`, `ci`).
    - If already on a non-default feature branch, stay on it.
@@ -28,7 +28,7 @@ commit hash.
    of the default branch, stop and tell the user there is nothing to open a
    PR for. If the tree is clean but the branch already has commits ahead of
    default, skip straight to Step 2.
-4. Stage and commit the outstanding changes, following AGENTS.md's
+4. Stage and commit the outstanding changes, following CLAUDE.md's
    Conventional Commits format (`<type>[optional scope]: <description>`).
    Don't skip hooks (no `--no-verify`); if husky/lint-staged/commitlint
    rejects the commit, fix the underlying issue and recommit.

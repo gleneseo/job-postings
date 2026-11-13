@@ -54,7 +54,7 @@ can land in an intermediate release.
   repo instead, or fall back to `npm view <pkg>@<version>` plus the
   package's own CHANGELOG.md if published to npm.
 - A local checkout of the Effect source may be available (see
-  [AGENTS.md](../../../AGENTS.md) — "Local Effect Source") — useful for
+  [CLAUDE.md](../../../CLAUDE.md) — "Local Effect Source") — useful for
   cross-checking an API that changelog wording is ambiguous about. This
   checkout is a static clone and may be behind the version you're
   targeting — check its current commit/tag (e.g. `git -C

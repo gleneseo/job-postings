@@ -222,7 +222,7 @@ Traces show up in Grafana at [http://localhost:3000](http://localhost:3000) unde
 
 ## Updating dependencies
 
-Effect packages (`effect`, `@effect/*`) are bumped with the `/check-effect-update` Claude Code skill, which reads the changelog for every release in between, flags breaking changes, then applies and verifies the bump. After an Effect bump, check out the matching tag (e.g. `effect@4.1.3`) in the local Effect source clone described in [AGENTS.md](./AGENTS.md) so it stays in step with the installed version.
+Effect packages (`effect`, `@effect/*`) are bumped with the `/check-effect-update` Claude Code skill, which reads the changelog for every release in between, flags breaking changes, then applies and verifies the bump. After an Effect bump, check out the matching tag (e.g. `effect@4.1.3`) in the local Effect source clone described in [CLAUDE.md](./CLAUDE.md) so it stays in step with the installed version.
 
 For everything else, after any bump run `npm run build` (formatting, lint, typecheck, coverage). Some packages must move together or stay put:
 
@@ -236,4 +236,4 @@ For everything else, after any bump run `npm run build` (formatting, lint, typec
 
 ## Commit messages
 
-Commits follow [Conventional Commits](https://www.conventionalcommits.org/). See [AGENTS.md](./AGENTS.md) for details.
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/). See [CLAUDE.md](./CLAUDE.md) for details.
