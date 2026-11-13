@@ -30,8 +30,12 @@ const resolve = (
     const resolver = yield* KeyFileResolver;
     return yield* resolver.resolve(explicit);
   }).pipe(
-    Effect.provide(makeLayer(files)),
-    Effect.provide(ConfigProvider.layer(ConfigProvider.fromUnknown(env))),
+    Effect.provide(
+      Layer.mergeAll(
+        makeLayer(files),
+        ConfigProvider.layer(ConfigProvider.fromUnknown(env)),
+      ),
+    ),
   );
 
 const wellKnown = "gleneseo-helpers/job-postings.json";

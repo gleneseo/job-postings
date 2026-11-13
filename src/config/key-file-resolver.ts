@@ -73,17 +73,18 @@ class KeyFileResolver extends Context.Service<
             Effect.orElseSucceed(() => false),
           );
 
-        const resolve = (explicitPath: Option.Option<typeof FilePath.Type>) =>
-          Effect.gen(function* () {
-            const resolved: ResolvedKeyFile = Option.isSome(explicitPath)
-              ? { path: explicitPath.value, source: "flag" }
-              : { path: yield* wellKnownPath, source: "well-known location" };
+        const resolve = Effect.fn("key-file-resolver.resolve")(function* (
+          explicitPath: Option.Option<typeof FilePath.Type>,
+        ) {
+          const resolved: ResolvedKeyFile = Option.isSome(explicitPath)
+            ? { path: explicitPath.value, source: "flag" }
+            : { path: yield* wellKnownPath, source: "well-known location" };
 
-            if (!(yield* isRegularFile(resolved.path))) {
-              return yield* new KeyFileNotFoundError(resolved);
-            }
-            return resolved;
-          }).pipe(Effect.withSpan("key-file-resolver.resolve"));
+          if (!(yield* isRegularFile(resolved.path))) {
+            return yield* new KeyFileNotFoundError(resolved);
+          }
+          return resolved;
+        });
 
         return { resolve };
       }),
