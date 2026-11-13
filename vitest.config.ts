@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
@@ -7,12 +7,14 @@ export default defineConfig({
         test: {
           name: "unit",
           include: ["tests/unit/**/*.test.ts"],
+          exclude: [...configDefaults.exclude, "vendors/**"],
         },
       },
       {
         test: {
           name: "integration",
           include: ["tests/integration/**/*.test.ts"],
+          exclude: [...configDefaults.exclude, "vendors/**"],
           globalSetup: ["./tests/integration/setup/postgres.ts"],
         },
       },
