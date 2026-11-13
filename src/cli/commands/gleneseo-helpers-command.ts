@@ -3,6 +3,7 @@ import { type CliError, Command, Flag } from "effect/cli";
 import handleGleneseoHelpersCommand from "../command-handlers/handle-gleneseo-helpers-command.js";
 import handleJobPostingsCommand from "../command-handlers/handle-job-postings-command.js";
 import printBanner from "../print-banner.js";
+import gmailCommand from "./gmail-command.js";
 import jobPostingsCommand from "./job-postings-command.js";
 import packageJson from "../../../package.json" with { type: "json" };
 
@@ -40,7 +41,7 @@ const gleneseoHelpersCommand = Command.make(
   ({ quiet }) => handleGleneseoHelpersCommand(quiet),
 ).pipe(
   Command.withDescription("A collection of Gleneseo helper commands"),
-  Command.withSubcommands([jobPostingsCommand, helpCommand]),
+  Command.withSubcommands([gmailCommand, jobPostingsCommand, helpCommand]),
 );
 
 export default gleneseoHelpersCommand;

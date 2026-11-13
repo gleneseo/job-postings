@@ -5,6 +5,7 @@ A CLI of Gleneseo helper commands, each exposed as a subcommand. Run `gleneseo-h
 | Subcommand     | Description                                                                              |
 | -------------- | ---------------------------------------------------------------------------------------- |
 | `job-postings` | Downloads a Google Sheet of job postings, sorts it, and prints it to standard out as CSV |
+| `gmail`        | Placeholder for downloading emails from a Gmail inbox; not implemented yet               |
 | `help`         | Shows the application help                                                               |
 
 ## Requirements
