@@ -1,14 +1,6 @@
-import os from "node:os";
-import {
-  Config,
-  Context,
-  Effect,
-  FileSystem,
-  Layer,
-  Option,
-  Path,
-} from "effect";
+import { Context, Effect, Layer, Option } from "effect";
 import FilePath from "../helpers/file-path.js";
+import ConfigFileLocator from "./config-file-locator.js";
 import KeyFileNotFoundError from "./key-file-not-found-error.js";
 
 /**
@@ -28,8 +20,7 @@ class KeyFileResolver extends Context.Service<
   {
     /**
      * Resolves the key file, preferring the explicit path and otherwise
-     * using `gleneseo-helpers/job-postings.json` under `XDG_CONFIG_HOME`
-     * (when it is set to a non-empty, absolute path) or `~/.config`
+     * using `gleneseo-helpers/job-postings.json` in the Config directory
      *
      * @param explicitPath - The key file path given by the user, if any
      * @returns An effect that resolves to the key file, or fails with
@@ -41,56 +32,28 @@ class KeyFileResolver extends Context.Service<
     ) => Effect.Effect<ResolvedKeyFile, KeyFileNotFoundError>;
   }
 >()("@app/KeyFileResolver") {
-  /**
-   * Builds a layer that resolves `~` with the given home directory lookup
-   *
-   * @param homeDirectory - Returns the current user's home directory
-   */
-  static readonly layerWith = (homeDirectory: () => string) =>
-    Layer.effect(
-      KeyFileResolver,
-      Effect.gen(function* () {
-        const fileSystem = yield* FileSystem.FileSystem;
-        const path = yield* Path.Path;
+  static readonly layer = Layer.effect(
+    KeyFileResolver,
+    Effect.gen(function* () {
+      const locator = yield* ConfigFileLocator;
 
-        const wellKnownPath = Effect.gen(function* () {
-          const xdgConfigHome = yield* Config.String("XDG_CONFIG_HOME").pipe(
-            Config.option,
-            Effect.orDie,
-          );
-          const configHome = xdgConfigHome.pipe(
-            Option.filter((x) => x !== "" && path.isAbsolute(x)),
-            Option.getOrElse(() => path.join(homeDirectory(), ".config")),
-          );
-          return FilePath.make(
-            path.join(configHome, "gleneseo-helpers", "job-postings.json"),
-          );
-        });
+      const resolve = Effect.fn("key-file-resolver.resolve")(function* (
+        explicitPath: Option.Option<typeof FilePath.Type>,
+      ) {
+        const { exists, ...resolved } = yield* locator.locate(
+          explicitPath,
+          "job-postings.json",
+        );
 
-        const isRegularFile = (keyFilePath: typeof FilePath.Type) =>
-          fileSystem.stat(keyFilePath).pipe(
-            Effect.map((info) => info.type === "File"),
-            Effect.orElseSucceed(() => false),
-          );
+        if (!exists) {
+          return yield* new KeyFileNotFoundError(resolved);
+        }
+        return resolved;
+      });
 
-        const resolve = Effect.fn("key-file-resolver.resolve")(function* (
-          explicitPath: Option.Option<typeof FilePath.Type>,
-        ) {
-          const resolved: ResolvedKeyFile = Option.isSome(explicitPath)
-            ? { path: explicitPath.value, source: "flag" }
-            : { path: yield* wellKnownPath, source: "well-known location" };
-
-          if (!(yield* isRegularFile(resolved.path))) {
-            return yield* new KeyFileNotFoundError(resolved);
-          }
-          return resolved;
-        });
-
-        return { resolve };
-      }),
-    );
-
-  static readonly layer = KeyFileResolver.layerWith(os.homedir);
+      return { resolve };
+    }),
+  );
 }
 
 export default KeyFileResolver;
