@@ -4,8 +4,8 @@ A CLI that downloads a Google Sheet of job postings, sorts it, and prints it to 
 
 ## Requirements
 
-- Node.js `>=24 <25`
-- npm `^12.0.2`
+- Node.js `>=26.13.0 <27`
+- npm `^12.2.2`
 - A running Docker daemon — required by the integration tests (and therefore by `npm test` and `npm run test:coverage`), and separately by `npm run build`, which also builds the production image. See [Testing](#testing) and [Docker](#docker).
 - A Google Cloud service account with the Drive and Sheets APIs enabled, its JSON key file downloaded locally, and read access to the target Drive folder (share the folder with the service account's email). See [Usage](#usage).
 
