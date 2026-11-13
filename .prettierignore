@@ -2,3 +2,4 @@ dist
 .eslint
 .coverage
 .workmux
+vendors

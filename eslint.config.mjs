@@ -13,6 +13,7 @@ export default defineConfig(
       ".eslint/**",
       ".data/**",
       ".workmux/**",
+      "vendors/**",
       "vitest.config.ts",
       "commitlint.config.js",
     ],
