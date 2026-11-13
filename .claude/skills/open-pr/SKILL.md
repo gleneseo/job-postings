@@ -95,3 +95,16 @@ EOF
 Omit `--label` entirely when no label applies. Use the heredoc for `--body`
 so formatting — especially the proof fenced block — survives intact. Report
 the resulting PR URL back to the user.
+
+### Stacking
+
+Stack the PR when the user says "stack", "stacked PR", or similar, or when
+the current branch was created on top of another open PR's branch:
+
+1. Confirm the parent branch has an open PR (`gh pr list --head <parent>`).
+2. Create this PR with `--base <parent-branch>` instead of the default branch.
+3. Run `gh stack link <PR numbers, bottom to top>` (include every PR already
+   in the stack, plus this one) so GitHub treats them as a stack. Chaining
+   `--base` alone is not enough.
+4. Verify with `gh pr view <number>` and report the stack URL that
+   `gh stack link` prints.
