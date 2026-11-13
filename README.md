@@ -23,6 +23,8 @@ npm install
 
 To install the `gleneseo-helpers` command locally, run `./install.sh`. It pulls the latest code (fast-forward only), installs dependencies, builds, offers to remove a conflicting `gleneseo-helpers` already on your `PATH`, runs `npm link`, and checks that `gleneseo-helpers --help` works.
 
+To remove it, run `./uninstall.sh`. It runs `npm unlink -g` for the active Node version and checks that the command is gone from your `PATH`. It leaves `node_modules/` and `dist/` alone, and refuses to remove a `gleneseo-helpers` that does not come from this repo.
+
 ## Google Cloud service account setup
 
 The `job-postings` subcommand authenticates as a Google Cloud service account, so you need a project with the right APIs enabled and a JSON key file downloaded before you can run it.
