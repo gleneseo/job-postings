@@ -1,6 +1,11 @@
-# job-postings
+# gleneseo-helpers
 
-A CLI that downloads a Google Sheet of job postings, sorts it, and prints it to standard out as CSV.
+A CLI of Gleneseo helper commands, each exposed as a subcommand. Run `gleneseo-helpers --help` to list them.
+
+| Subcommand     | Description                                                                              |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| `job-postings` | Downloads a Google Sheet of job postings, sorts it, and prints it to standard out as CSV |
+| `help`         | Shows the application help                                                               |
 
 ## Requirements
 
@@ -29,13 +34,15 @@ With that done, pass the key file's path as the CLI's `key-file-path` argument (
 
 ## Usage
 
+### `job-postings`
+
 Locates a Google Sheet in Drive by folder and file name, sorts its rows by `Last Contact` date (undated rows first, ties broken alphabetically by `Company`), and prints the result to standard out as CSV, so it can be redirected to a file or piped into another CLI. If the target sheet has no rows, the CLI exits with `NoSheetDataError` (see [Exit codes](#exit-codes)) instead of printing a CSV.
 
 ```sh
-npm start -- ./key.json
+npm start -- job-postings ./key.json
 ```
 
-An ASCII banner prints before the command runs, but only on an interactive terminal (stdout is a TTY) — it's skipped when output is piped, redirected, or otherwise non-interactive, so it doesn't clutter scripted or CI runs. Passing `--quiet` also suppresses it.
+An ASCII banner prints before the command runs, but only on an interactive terminal (stdout is a TTY) — it's skipped when output is piped, redirected, or otherwise non-interactive, so it doesn't clutter scripted or CI runs. Passing `--quiet` also suppresses it. The banner prints for every subcommand, and the root command accepts `--quiet` too.
 
 Progress messages are logged to standard error, keeping standard out free for the CSV data.
 
@@ -51,13 +58,13 @@ Progress messages are logged to standard error, keeping standard out free for th
 For example, to read the second sheet of a file named `Applications` in a folder named `2026 Search`, and redirect the CSV to `applications.csv`:
 
 ```sh
-npm start -- ./key.json --folder-name "2026 Search" --file-name Applications --sheet-index 1 > applications.csv
+npm start -- job-postings ./key.json --folder-name "2026 Search" --file-name Applications --sheet-index 1 > applications.csv
 ```
 
 Or pipe it directly into another CLI application:
 
 ```sh
-npm start -- ./key.json | my-other-cli
+npm start -- job-postings ./key.json | my-other-cli
 ```
 
 The service account only needs read-only access — it authenticates with the `spreadsheets.readonly` and `drive.readonly` scopes.
@@ -68,15 +75,15 @@ The service account only needs read-only access — it authenticates with the `s
 
 ```sh
 npm run build:tsc
-node dist/src/index.js ./key.json
+node dist/src/index.js job-postings ./key.json
 ```
 
-The package also declares a `job-postings` bin pointing at that same compiled entry point (`dist/src/index.js`), so once it's built, either `npm link` or `npm install -g .` exposes it as a `job-postings` command:
+The package also declares a `gleneseo-helpers` bin pointing at that same compiled entry point (`dist/src/index.js`), so once it's built, either `npm link` or `npm install -g .` exposes it as a `gleneseo-helpers` command:
 
 ```sh
 npm run build:tsc
 npm link
-job-postings ./key.json
+gleneseo-helpers job-postings ./key.json
 ```
 
 All flags from the table above work the same way regardless of how the CLI is invoked.
@@ -215,7 +222,7 @@ The CLI's spans (see [`Effect.withSpan`](https://effect.website)) only export on
 - Inline environment variables:
 
   ```sh
-  OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 OTEL_TRACES_EXPORTER=otlp npm start -- ./key.json
+  OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 OTEL_TRACES_EXPORTER=otlp npm start -- job-postings ./key.json
   ```
 
 Traces show up in Grafana at [http://localhost:3000](http://localhost:3000) under the Tempo data source (Explore → Tempo → search by service name).
@@ -232,7 +239,7 @@ For everything else, after any bump run `npm run build` (formatting, lint, typec
 - **`prettier`** — pinned to an exact version so formatting output doesn't change unexpectedly. Bump it deliberately and run `npm run prettier:check`.
 - **`@types/node`** — stay on the `26.x` line to match the Node 26 runtime.
 - **`typescript`** — stay on 6.x until `typescript-eslint` supports 7 and `effect-language-service patch` (run by `npm install`'s `prepare` script) is confirmed to work with it.
-- **`googleapis`** — the automated tests don't call Google, so after a bump run the CLI against a real sheet (`npm start -- ./key.json`) to confirm authentication and the Drive and Sheets calls still work.
+- **`googleapis`** — the automated tests don't call Google, so after a bump run the CLI against a real sheet (`npm start -- job-postings ./key.json`) to confirm authentication and the Drive and Sheets calls still work.
 
 ## Commit messages
 

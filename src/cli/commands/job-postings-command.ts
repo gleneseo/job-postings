@@ -1,12 +1,10 @@
-import type { Effect } from "effect";
-import { Argument, type CliError, Command, Flag } from "effect/cli";
+import { Argument, Command, Flag } from "effect/cli";
 import handleJobPostingsCommand from "../command-handlers/handle-job-postings-command.js";
 import FilePath from "../../helpers/file-path.js";
 import FolderName from "../../helpers/folder-name.js";
 import FileName from "../../helpers/file-name.js";
 import SheetIndex from "../../helpers/sheet-index.js";
 import TimeoutSeconds from "../../helpers/timeout-seconds.js";
-import packageJson from "../../../package.json" with { type: "json" };
 
 const keyFilePath = Argument.File("key-file-path", { mustExist: true }).pipe(
   Argument.withSchema(FilePath),
@@ -54,23 +52,6 @@ const timeoutSeconds = Flag.Int("timeout").pipe(
   ),
 );
 
-type HandlerEffect = ReturnType<typeof handleJobPostingsCommand>;
-
-const helpCommand = Command.make(
-  "help",
-  {},
-  // The return type annotation breaks the type-inference cycle with
-  // `jobPostingsCommand`, which is declared below and referenced in the body.
-  (): Effect.Effect<
-    void,
-    Effect.Error<HandlerEffect> | CliError.CliError,
-    Effect.Services<HandlerEffect> | Command.Environment
-  > =>
-    Command.runWith(jobPostingsCommand, { version: packageJson.version })([
-      "--help",
-    ]),
-).pipe(Command.withDescription("Show the application help"));
-
 const jobPostingsCommand = Command.make(
   "job-postings",
   {
@@ -94,7 +75,6 @@ const jobPostingsCommand = Command.make(
   Command.withDescription(
     "Sort a Google Sheet's job postings and print them to standard out as CSV",
   ),
-  Command.withSubcommands([helpCommand]),
 );
 
 export default jobPostingsCommand;
