@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-ARG NODE_VERSION=24.19.0-slim
+ARG NODE_VERSION=26.13.0-slim
 ARG NPM_VERSION=12.0.2
 
 FROM node:${NODE_VERSION} AS base
