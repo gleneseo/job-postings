@@ -15,5 +15,6 @@
     "resolveJsonModule": true,
     "plugins": [{ "name": "@effect/language-service" }]
   },
-  "include": ["src", "tests", "package.json"]
+  "include": ["src", "tests", "package.json"],
+  "exclude": ["vendors"]
 }
