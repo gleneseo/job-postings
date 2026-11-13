@@ -1,5 +1,7 @@
-import { Console, Duration, Effect } from "effect";
+import { Console, Duration, Effect, Option } from "effect";
 import printBanner from "../print-banner.js";
+import KeyFileResolver from "../../config/key-file-resolver.js";
+import KeyFileNotFoundError from "../../config/key-file-not-found-error.js";
 import GoogleTools from "../../google/google-tools.js";
 import MissingFolderIdError from "../../google/missing-folder-id-error.js";
 import FilePath from "../../helpers/file-path.js";
@@ -36,6 +38,7 @@ type JobPostingsError =
   | FolderNotFoundError
   | FolderSearchError
   | InvalidSheetIndexError
+  | KeyFileNotFoundError
   | MissingFileIdError
   | MissingFolderIdError
   | NoSheetDataError
@@ -43,12 +46,13 @@ type JobPostingsError =
   | SheetValuesFetchError;
 
 /**
- * Authenticates with Google using the given key file, locates the target
+ * Resolves the key file, authenticates with Google using it, locates the target
  * sheet by folder and file name, sorts its values, and prints them to
  * standard out as CSV, logging progress to standard error along the way
  * and, for a domain error, a human-readable message before failing with it
  *
- * @param keyFilePath - Path to the Google service account JSON key file
+ * @param keyFilePath - Path to the Google service account JSON key file, if
+ * given; otherwise the well-known location is used
  * @param folderName - Name of the Google Drive folder containing the sheet
  * file
  * @param fileName - Name of the sheet file to read
@@ -62,13 +66,13 @@ type JobPostingsError =
  * with the {@link JobPostingsError} that stopped it, after logging why
  */
 const handleJobPostingsCommand: (
-  keyFilePath: typeof FilePath.Type,
+  keyFilePath: Option.Option<typeof FilePath.Type>,
   folderName: typeof FolderName.Type,
   fileName: typeof FileName.Type,
   sheetIndex: typeof SheetIndex.Type,
   quiet: boolean,
   timeoutSeconds: typeof TimeoutSeconds.Type,
-) => Effect.Effect<void, JobPostingsError, GoogleTools> = (
+) => Effect.Effect<void, JobPostingsError, GoogleTools | KeyFileResolver> = (
   keyFilePath,
   folderName,
   fileName,
@@ -78,6 +82,7 @@ const handleJobPostingsCommand: (
 ) =>
   Effect.gen(function* () {
     const googleTools = yield* GoogleTools;
+    const keyFileResolver = yield* KeyFileResolver;
     const timeout = Duration.seconds(timeoutSeconds);
 
     const logStatus = (message: string) =>
@@ -85,8 +90,12 @@ const handleJobPostingsCommand: (
 
     yield* printBanner(quiet);
 
-    yield* logStatus(`Authenticating with key file [${keyFilePath}].`);
-    const auth = yield* googleTools.getAuth(keyFilePath);
+    const keyFile = yield* keyFileResolver.resolve(keyFilePath);
+
+    yield* logStatus(
+      `Authenticating with key file [${keyFile.path}] (${keyFile.source}).`,
+    );
+    const auth = yield* googleTools.getAuth(keyFile.path);
 
     yield* logStatus(`Searching for folder [${folderName}].`);
     const folder = yield* googleTools.getFolder(auth, folderName, timeout);
@@ -161,6 +170,10 @@ const handleJobPostingsCommand: (
       InvalidSheetIndexError: (e) =>
         Console.error(
           `❌ Sheet index [${e.indexRequested.toString()}] is invalid for file [${fileName}]. Only [${e.totalCount.toString()}] sheet(s) available.`,
+        ).pipe(Effect.andThen(() => Effect.fail(e))),
+      KeyFileNotFoundError: (e) =>
+        Console.error(
+          `❌ Could not find key file [${e.path}] (${e.source}). Make sure the file exists.`,
         ).pipe(Effect.andThen(() => Effect.fail(e))),
       MissingFileIdError: (e) =>
         Console.error(

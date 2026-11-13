@@ -1,5 +1,5 @@
 import { assert, describe, expect, it, vi } from "@effect/vitest";
-import { Duration, Effect, Layer, Runtime } from "effect";
+import { Duration, Effect, Layer, Option, Runtime } from "effect";
 import { TestConsole } from "effect/testing";
 import type { Auth, drive_v3 } from "googleapis";
 import handleJobPostingsCommand from "../../../../src/cli/command-handlers/handle-job-postings-command.js";
@@ -15,6 +15,8 @@ import SheetFetchError from "../../../../src/google/sheet-fetch-error.js";
 import SheetValuesFetchError from "../../../../src/google/sheet-values-fetch-error.js";
 import InvalidSheetIndexError from "../../../../src/google/invalid-sheet-index-error.js";
 import NoSheetDataError from "../../../../src/google/no-sheet-data-error.js";
+import KeyFileResolver from "../../../../src/config/key-file-resolver.js";
+import KeyFileNotFoundError from "../../../../src/config/key-file-not-found-error.js";
 import GoogleTools from "../../../../src/google/google-tools.js";
 import FilePath from "../../../../src/helpers/file-path.js";
 import FolderName from "../../../../src/helpers/folder-name.js";
@@ -36,7 +38,7 @@ const fakeFolder: drive_v3.Schema$File = { id: "1", name: "reports" };
 const fakeFile: drive_v3.Schema$File = { id: "2", name: "Job Postings" };
 const fakeValues: string[][] = [["title", "company"]];
 const fakeCsv = "title,company";
-const msgAuthenticating = `Authenticating with key file [${keyFilePath}].`;
+const msgAuthenticating = `Authenticating with key file [${keyFilePath}] (flag).`;
 const msgSearchingForFolder = `Searching for folder [${folderName}].`;
 const msgSearchingForFile = `Searching for file [${fileName}] in folder [${folderName}].`;
 const msgFetchingSheetValues = (index: typeof SheetIndex.Type) =>
@@ -82,11 +84,35 @@ const makeGoogleToolsTestDouble = (overrides: {
   getFiles: vi.fn(() => Effect.die("not implemented by this test double")),
 });
 
+const makeKeyFileResolverTestDouble = (
+  resolve?: (
+    explicitPath: Option.Option<typeof FilePath.Type>,
+  ) => ReturnType<(typeof KeyFileResolver.Service)["resolve"]>,
+) => ({
+  resolve: vi.fn(
+    resolve ??
+      ((explicitPath: Option.Option<typeof FilePath.Type>) =>
+        Effect.succeed({
+          path: Option.getOrElse(explicitPath, () => keyFilePath),
+          source: Option.isSome(explicitPath)
+            ? ("flag" as const)
+            : ("well-known location" as const),
+        })),
+  ),
+});
+
 const provideTestDoubles = (
   googleTools: ReturnType<typeof makeGoogleToolsTestDouble>,
+  keyFileResolver: ReturnType<
+    typeof makeKeyFileResolverTestDouble
+  > = makeKeyFileResolverTestDouble(),
 ) =>
   Effect.provide(
-    Layer.mergeAll(Layer.succeed(GoogleTools, googleTools), TestConsole.layer),
+    Layer.mergeAll(
+      Layer.succeed(GoogleTools, googleTools),
+      Layer.succeed(KeyFileResolver, keyFileResolver),
+      TestConsole.layer,
+    ),
   );
 
 describe("handleJobPostingsCommand", () => {
@@ -97,7 +123,7 @@ describe("handleJobPostingsCommand", () => {
         const googleTools = makeGoogleToolsTestDouble({});
 
         yield* handleJobPostingsCommand(
-          keyFilePath,
+          Option.some(keyFilePath),
           folderName,
           fileName,
           sheetIndex,
@@ -147,7 +173,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          keyFilePath,
+          Option.some(keyFilePath),
           folderName,
           fileName,
           sheetIndex,
@@ -178,7 +204,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          keyFilePath,
+          Option.some(keyFilePath),
           folderName,
           fileName,
           sheetIndex,
@@ -206,7 +232,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          keyFilePath,
+          Option.some(keyFilePath),
           folderName,
           fileName,
           sheetIndex,
@@ -237,7 +263,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          keyFilePath,
+          Option.some(keyFilePath),
           folderName,
           fileName,
           sheetIndex,
@@ -268,7 +294,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          keyFilePath,
+          Option.some(keyFilePath),
           folderName,
           fileName,
           sheetIndex,
@@ -297,7 +323,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          keyFilePath,
+          Option.some(keyFilePath),
           folderName,
           fileName,
           sheetIndex,
@@ -329,7 +355,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          keyFilePath,
+          Option.some(keyFilePath),
           folderName,
           fileName,
           sheetIndex,
@@ -359,7 +385,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          keyFilePath,
+          Option.some(keyFilePath),
           folderName,
           fileName,
           sheetIndex,
@@ -387,7 +413,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          keyFilePath,
+          Option.some(keyFilePath),
           folderName,
           fileName,
           sheetIndex,
@@ -420,7 +446,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          keyFilePath,
+          Option.some(keyFilePath),
           folderName,
           fileName,
           invalidSheetIndex,
@@ -452,7 +478,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          keyFilePath,
+          Option.some(keyFilePath),
           folderName,
           fileName,
           sheetIndex,
@@ -485,7 +511,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          keyFilePath,
+          Option.some(keyFilePath),
           folderName,
           fileName,
           sheetIndex,
@@ -510,7 +536,7 @@ describe("handleJobPostingsCommand", () => {
       const googleTools = makeGoogleToolsTestDouble({});
 
       yield* handleJobPostingsCommand(
-        keyFilePath,
+        Option.some(keyFilePath),
         folderName,
         fileName,
         sheetIndex,
@@ -526,5 +552,65 @@ describe("handleJobPostingsCommand", () => {
         [],
       );
     }),
+  );
+
+  it.effect(
+    "should resolve the key file from the well-known location when none is given",
+    () =>
+      Effect.gen(function* () {
+        const googleTools = makeGoogleToolsTestDouble({});
+        const keyFileResolver = makeKeyFileResolverTestDouble();
+
+        yield* handleJobPostingsCommand(
+          Option.none(),
+          folderName,
+          fileName,
+          sheetIndex,
+          quiet,
+          timeoutSeconds,
+        ).pipe(provideTestDoubles(googleTools, keyFileResolver));
+
+        expect(keyFileResolver.resolve).toHaveBeenCalledExactlyOnceWith(
+          Option.none(),
+        );
+        expect(googleTools.getAuth).toHaveBeenCalledExactlyOnceWith(
+          keyFilePath,
+        );
+        assert.include(
+          yield* TestConsole.errorLines,
+          `Authenticating with key file [${keyFilePath}] (well-known location).`,
+        );
+      }),
+  );
+
+  it.effect(
+    "should log the failure and fail with KeyFileNotFoundError when the key file is missing",
+    () =>
+      Effect.gen(function* () {
+        const googleTools = makeGoogleToolsTestDouble({});
+        const error = new KeyFileNotFoundError({
+          path: keyFilePath,
+          source: "flag",
+        });
+        const keyFileResolver = makeKeyFileResolverTestDouble(() =>
+          Effect.fail(error),
+        );
+
+        const result = yield* handleJobPostingsCommand(
+          Option.some(keyFilePath),
+          folderName,
+          fileName,
+          sheetIndex,
+          quiet,
+          timeoutSeconds,
+        ).pipe(provideTestDoubles(googleTools, keyFileResolver), Effect.flip);
+
+        assert.strictEqual(result, error);
+        expect(googleTools.getAuth).not.toHaveBeenCalled();
+        assert.include(
+          yield* TestConsole.errorLines,
+          `❌ Could not find key file [${keyFilePath}] (flag). Make sure the file exists.`,
+        );
+      }),
   );
 });

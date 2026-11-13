@@ -9,6 +9,7 @@ import { CliConfig, Command, GlobalFlag } from "effect/cli";
 import { OtlpSerialization, OtlpTracer } from "effect/observability";
 import packageJson from "../package.json" with { type: "json" };
 import gleneseoHelpersCommand from "./cli/commands/gleneseo-helpers-command.js";
+import KeyFileResolver from "./config/key-file-resolver.js";
 import GoogleTools from "./google/google-tools.js";
 
 /**
@@ -41,9 +42,12 @@ const ObservabilityLayer = OtlpTracer.layerFromConfig({
 
 Command.run(gleneseoHelpersCommand, { version: packageJson.version }).pipe(
   Effect.provide(
-    Layer.mergeAll(GoogleTools.layer, ObservabilityLayer, CliConfigLayer).pipe(
-      Layer.provideMerge(NodeServices.layer),
-    ),
+    Layer.mergeAll(
+      GoogleTools.layer,
+      KeyFileResolver.layer,
+      ObservabilityLayer,
+      CliConfigLayer,
+    ).pipe(Layer.provideMerge(NodeServices.layer)),
   ),
   NodeRuntime.runMain,
 );
