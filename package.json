@@ -8,7 +8,7 @@
   },
   "scripts": {
     "clean": "rimraf dist .coverage .eslint",
-    "build": "npm-run-all clean prettier:check lint build:tsc test:coverage docker:build proof",
+    "build": "npm-run-all clean prettier:check lint build:tsc test:coverage proof",
     "build:tsc": "tsc",
     "start": "tsx src/index.ts",
     "start:env": "tsx --env-file=.env.example src/index.ts",
@@ -21,8 +21,6 @@
     "lint": "npm-run-all lint:eslint",
     "lint:eslint": "eslint .",
     "lint:eslint:report": "eslint . --output-file=.eslint/report.html --format=html",
-    "docker:build": " docker build . --tag job-postings:latest",
-    "docker:run": " docker run --rm -it -t job-postings:latest",
     "proof": "git rev-parse HEAD | cowsay -r",
     "prepare": "husky && effect-language-service patch"
   },
