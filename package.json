@@ -65,6 +65,6 @@
   "dependencies": {
     "@effect/platform-node": "^4.1.4",
     "effect": "^4.1.4",
-    "googleapis": "^189.0.0"
+    "googleapis": "^190.0.0"
   }
 }
