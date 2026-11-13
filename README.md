@@ -35,7 +35,7 @@ The `job-postings` subcommand authenticates as a Google Cloud service account, s
 4. Open the new service account, go to the **Keys** tab, click **Add Key → Create new key**, choose **JSON**, and download it. Store this file somewhere safe outside version control — it grants access to anything shared with the service account.
 5. Copy the service account's email address (looks like `<name>@<project-id>.iam.gserviceaccount.com`, visible on the service account's details page). In Google Drive, share the folder containing the target sheet with that email address, granting at least **Viewer** access.
 
-With that done, pass the key file's path as the `job-postings` subcommand's `key-file-path` argument (see [Usage](#usage)).
+With that done, save the key file where `job-postings` looks for it by default, or pass its path with `--key-file-path` (see [Usage](#usage)).
 
 ## Usage
 
@@ -44,32 +44,34 @@ With that done, pass the key file's path as the `job-postings` subcommand's `key
 Locates a Google Sheet in Drive by folder and file name, sorts its rows by `Last Contact` date (undated rows first, ties broken alphabetically by `Company`), and prints the result to standard out as CSV, so it can be redirected to a file or piped into another CLI. If the target sheet has no rows, the subcommand exits with `NoSheetDataError` (see [Exit codes](#exit-codes)) instead of printing a CSV.
 
 ```sh
-npm start -- job-postings ./key.json
+npm start -- job-postings
 ```
 
 An ASCII banner prints before the command runs, but only on an interactive terminal (stdout is a TTY) — it's skipped when output is piped, redirected, or otherwise non-interactive, so it doesn't clutter scripted or CI runs. Passing `--quiet` also suppresses it. Every subcommand, and the bare `gleneseo-helpers` root command (which accepts its own `--quiet`/`-q`), prints the same banner; the `help` subcommand always shows it on a TTY.
 
+**Key file lookup.** If `--key-file-path` is given, that file is used and the command fails if it does not exist. Otherwise the command looks in the well-known location `gleneseo-helpers/job-postings.json` under `$XDG_CONFIG_HOME`, falling back to `~/.config` when `XDG_CONFIG_HOME` is unset, empty, or not an absolute path, and fails if no file exists there. Only regular files count. The `gleneseo-helpers` directory is shared by the other subcommands for their own configuration.
+
 Progress messages are logged to standard error, keeping standard out free for the CSV data.
 
-| Argument/Flag              | Description                                                   | Default        |
-| -------------------------- | ------------------------------------------------------------- | -------------- |
-| `key-file-path` (argument) | Path to the Google service account JSON key file              | —              |
-| `--folder-name`            | The Google Drive folder that contains the sheet file          | `Claude`       |
-| `--file-name`              | The sheet file name                                           | `Job Postings` |
-| `--sheet-index`, `-i`      | The 0-based index of the target sheet                         | `0`            |
-| `--quiet`, `-q`            | Suppress the banner and status messages; runtime errors print | `false`        |
-| `--timeout`                | Network request timeout, in seconds, for each Google API call | `5`            |
+| Argument/Flag         | Description                                                   | Default        |
+| --------------------- | ------------------------------------------------------------- | -------------- |
+| `--key-file-path`     | Path to the Google service account JSON key file              | See below      |
+| `--folder-name`       | The Google Drive folder that contains the sheet file          | `Claude`       |
+| `--file-name`         | The sheet file name                                           | `Job Postings` |
+| `--sheet-index`, `-i` | The 0-based index of the target sheet                         | `0`            |
+| `--quiet`, `-q`       | Suppress the banner and status messages; runtime errors print | `false`        |
+| `--timeout`           | Network request timeout, in seconds, for each Google API call | `5`            |
 
 For example, to read the second sheet of a file named `Applications` in a folder named `2026 Search`, and redirect the CSV to `applications.csv`:
 
 ```sh
-npm start -- job-postings ./key.json --folder-name "2026 Search" --file-name Applications --sheet-index 1 > applications.csv
+npm start -- job-postings --key-file-path ./key.json --folder-name "2026 Search" --file-name Applications --sheet-index 1 > applications.csv
 ```
 
 Or pipe it directly into another CLI application:
 
 ```sh
-npm start -- job-postings ./key.json | my-other-cli
+npm start -- job-postings | my-other-cli
 ```
 
 The service account only needs read-only access — it authenticates with the `spreadsheets.readonly` and `drive.readonly` scopes.
@@ -80,7 +82,7 @@ The service account only needs read-only access — it authenticates with the `s
 
 ```sh
 npm run build:tsc
-node dist/src/index.js job-postings ./key.json
+node dist/src/index.js job-postings --key-file-path ./key.json
 ```
 
 The package also declares a `gleneseo-helpers` bin pointing at that same compiled entry point (`dist/src/index.js`), so once it's built, either `npm link` or `npm install -g .` exposes it as a `gleneseo-helpers` command:
@@ -88,7 +90,7 @@ The package also declares a `gleneseo-helpers` bin pointing at that same compile
 ```sh
 npm run build:tsc
 npm link
-gleneseo-helpers job-postings ./key.json
+gleneseo-helpers job-postings --key-file-path ./key.json
 ```
 
 All flags from the table above work the same way regardless of how the CLI is invoked.
@@ -113,6 +115,7 @@ Each domain error the `job-postings` subcommand can fail with exits with its own
 | `31`      | `InvalidSheetIndexError`     | `--sheet-index` is outside the range of available sheets. |
 | `32`      | `SheetValuesFetchError`      | Fetching the target sheet's values failed.                |
 | `33`      | `NoSheetDataError`           | The target sheet does not contain any rows.               |
+| `40`      | `KeyFileNotFoundError`       | No key file exists at the given or well-known path.       |
 | `130`     | —                            | Interrupted (e.g. `Ctrl+C`).                              |
 
 A request that exceeds `--timeout` fails with the same error and exit code its underlying call would otherwise use (e.g. a folder search that times out is a `FolderSearchError`, exit `10`) — timing out doesn't introduce a separate code.
@@ -214,20 +217,20 @@ The CLI's spans (see [`Effect.withSpan`](https://effect.website)) only export on
 - `npm run start:env` — loads [`.env.example`](.env.example) directly via Node's `--env-file` flag, no setup required:
 
   ```sh
-  npm run start:env -- job-postings ./key.json
+  npm run start:env -- job-postings --key-file-path ./key.json
   ```
 
 - Your own `.env` — copy `.env.example` to `.env` (customize it if your collector isn't on the defaults), then load it the same way:
 
   ```sh
   cp .env.example .env
-  npx tsx --env-file=.env src/index.ts job-postings ./key.json
+  npx tsx --env-file=.env src/index.ts job-postings --key-file-path ./key.json
   ```
 
 - Inline environment variables:
 
   ```sh
-  OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 OTEL_TRACES_EXPORTER=otlp npm start -- job-postings ./key.json
+  OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 OTEL_TRACES_EXPORTER=otlp npm start -- job-postings
   ```
 
 Traces show up in Grafana at [http://localhost:3000](http://localhost:3000) under the Tempo data source (Explore → Tempo → search by service name).
@@ -244,7 +247,7 @@ For everything else, after any bump run `npm run build` (formatting, lint, typec
 - **`prettier`** — pinned to an exact version so formatting output doesn't change unexpectedly. Bump it deliberately and run `npm run prettier:check`.
 - **`@types/node`** — stay on the `26.x` line to match the Node 26 runtime.
 - **`typescript`** — stay on 6.x until `typescript-eslint` supports 7 and `effect-language-service patch` (run by `npm install`'s `prepare` script) is confirmed to work with it.
-- **`googleapis`** — the automated tests don't call Google, so after a bump run the CLI against a real sheet (`npm start -- job-postings ./key.json`) to confirm authentication and the Drive and Sheets calls still work.
+- **`googleapis`** — the automated tests don't call Google, so after a bump run the CLI against a real sheet (`npm start -- job-postings`) to confirm authentication and the Drive and Sheets calls still work.
 
 ## Commit messages
 

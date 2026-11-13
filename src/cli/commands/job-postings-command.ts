@@ -1,4 +1,4 @@
-import { Argument, Command, Flag } from "effect/cli";
+import { Command, Flag } from "effect/cli";
 import handleJobPostingsCommand from "../command-handlers/handle-job-postings-command.js";
 import FilePath from "../../helpers/file-path.js";
 import FolderName from "../../helpers/folder-name.js";
@@ -6,9 +6,12 @@ import FileName from "../../helpers/file-name.js";
 import SheetIndex from "../../helpers/sheet-index.js";
 import TimeoutSeconds from "../../helpers/timeout-seconds.js";
 
-const keyFilePath = Argument.File("key-file-path", { mustExist: true }).pipe(
-  Argument.withSchema(FilePath),
-  Argument.withDescription("The path to the JSON key file"),
+const keyFilePath = Flag.File("key-file-path").pipe(
+  Flag.withSchema(FilePath),
+  Flag.optional,
+  Flag.withDescription(
+    "The path to the JSON key file (default: gleneseo-helpers/job-postings.json in $XDG_CONFIG_HOME, or ~/.config if unset)",
+  ),
 );
 
 const folderName = Flag.String("folder-name").pipe(
