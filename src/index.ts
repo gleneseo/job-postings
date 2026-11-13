@@ -8,12 +8,12 @@ import {
 import { CliConfig, Command, GlobalFlag } from "effect/cli";
 import { OtlpSerialization, OtlpTracer } from "effect/observability";
 import packageJson from "../package.json" with { type: "json" };
-import jobPostingsCommand from "./cli/commands/job-postings-command.js";
+import gleneseoHelpersCommand from "./cli/commands/gleneseo-helpers-command.js";
 import GoogleTools from "./google/google-tools.js";
 
 /**
  * Excludes the `--completions`, `--wizard`, and `--log-level` built-in
- * flags, which aren't useful for this single-command CLI
+ * flags, which aren't useful for this CLI
  */
 const CliConfigLayer = CliConfig.layer({
   builtIns: GlobalFlag.BuiltIns.filter(
@@ -39,7 +39,7 @@ const ObservabilityLayer = OtlpTracer.layerFromConfig({
   Layer.provide(NodeHttpClient.layerUndici),
 );
 
-Command.run(jobPostingsCommand, { version: packageJson.version }).pipe(
+Command.run(gleneseoHelpersCommand, { version: packageJson.version }).pipe(
   Effect.provide(
     Layer.mergeAll(GoogleTools.layer, ObservabilityLayer, CliConfigLayer).pipe(
       Layer.provideMerge(NodeServices.layer),

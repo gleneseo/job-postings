@@ -1,10 +1,10 @@
 {
-  "name": "job-postings",
+  "name": "gleneseo-helpers",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "bin": {
-    "job-postings": "dist/src/index.js"
+    "gleneseo-helpers": "dist/src/index.js"
   },
   "scripts": {
     "clean": "rimraf dist .coverage .eslint",

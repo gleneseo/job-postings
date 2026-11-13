@@ -1,13 +1,18 @@
-# job-postings
+# gleneseo-helpers
 
-A CLI that downloads a Google Sheet of job postings, sorts it, and prints it to standard out as CSV.
+A CLI of Gleneseo helper commands, each exposed as a subcommand. Run `gleneseo-helpers --help` to list them.
+
+| Subcommand     | Description                                                                              |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| `job-postings` | Downloads a Google Sheet of job postings, sorts it, and prints it to standard out as CSV |
+| `help`         | Shows the application help                                                               |
 
 ## Requirements
 
 - Node.js `>=26.13.0 <27`
 - npm `^12.2.2`
 - A running Docker daemon — required by the integration tests (and therefore by `npm test`, `npm run test:coverage`, and `npm run build`). See [Testing](#testing).
-- A Google Cloud service account with the Drive and Sheets APIs enabled, its JSON key file downloaded locally, and read access to the target Drive folder (share the folder with the service account's email). See [Usage](#usage).
+- For the `job-postings` subcommand: a Google Cloud service account with the Drive and Sheets APIs enabled, its JSON key file downloaded locally, and read access to the target Drive folder (share the folder with the service account's email). See [Usage](#usage).
 
 ## Getting started
 
@@ -17,7 +22,7 @@ npm install
 
 ## Google Cloud service account setup
 
-The CLI authenticates as a Google Cloud service account, so you need a project with the right APIs enabled and a JSON key file downloaded before you can run it.
+The `job-postings` subcommand authenticates as a Google Cloud service account, so you need a project with the right APIs enabled and a JSON key file downloaded before you can run it.
 
 1. In the [Google Cloud Console](https://console.cloud.google.com/), select an existing project or create a new one.
 2. Enable the [Google Drive API](https://console.cloud.google.com/apis/library/drive.googleapis.com) and the [Google Sheets API](https://console.cloud.google.com/apis/library/sheets.googleapis.com) for that project.
@@ -25,17 +30,19 @@ The CLI authenticates as a Google Cloud service account, so you need a project w
 4. Open the new service account, go to the **Keys** tab, click **Add Key → Create new key**, choose **JSON**, and download it. Store this file somewhere safe outside version control — it grants access to anything shared with the service account.
 5. Copy the service account's email address (looks like `<name>@<project-id>.iam.gserviceaccount.com`, visible on the service account's details page). In Google Drive, share the folder containing the target sheet with that email address, granting at least **Viewer** access.
 
-With that done, pass the key file's path as the CLI's `key-file-path` argument (see [Usage](#usage)).
+With that done, pass the key file's path as the `job-postings` subcommand's `key-file-path` argument (see [Usage](#usage)).
 
 ## Usage
 
-Locates a Google Sheet in Drive by folder and file name, sorts its rows by `Last Contact` date (undated rows first, ties broken alphabetically by `Company`), and prints the result to standard out as CSV, so it can be redirected to a file or piped into another CLI. If the target sheet has no rows, the CLI exits with `NoSheetDataError` (see [Exit codes](#exit-codes)) instead of printing a CSV.
+### `job-postings`
+
+Locates a Google Sheet in Drive by folder and file name, sorts its rows by `Last Contact` date (undated rows first, ties broken alphabetically by `Company`), and prints the result to standard out as CSV, so it can be redirected to a file or piped into another CLI. If the target sheet has no rows, the subcommand exits with `NoSheetDataError` (see [Exit codes](#exit-codes)) instead of printing a CSV.
 
 ```sh
-npm start -- ./key.json
+npm start -- job-postings ./key.json
 ```
 
-An ASCII banner prints before the command runs, but only on an interactive terminal (stdout is a TTY) — it's skipped when output is piped, redirected, or otherwise non-interactive, so it doesn't clutter scripted or CI runs. Passing `--quiet` also suppresses it.
+An ASCII banner prints before the command runs, but only on an interactive terminal (stdout is a TTY) — it's skipped when output is piped, redirected, or otherwise non-interactive, so it doesn't clutter scripted or CI runs. Passing `--quiet` also suppresses it. Every subcommand, and the bare `gleneseo-helpers` root command (which accepts its own `--quiet`/`-q`), prints the same banner; the `help` subcommand always shows it on a TTY.
 
 Progress messages are logged to standard error, keeping standard out free for the CSV data.
 
@@ -45,19 +52,19 @@ Progress messages are logged to standard error, keeping standard out free for th
 | `--folder-name`            | The Google Drive folder that contains the sheet file          | `Claude`       |
 | `--file-name`              | The sheet file name                                           | `Job Postings` |
 | `--sheet-index`, `-i`      | The 0-based index of the target sheet                         | `0`            |
-| `--quiet`, `-q`            | Suppress status messages; runtime errors still print          | `false`        |
+| `--quiet`, `-q`            | Suppress the banner and status messages; runtime errors print | `false`        |
 | `--timeout`                | Network request timeout, in seconds, for each Google API call | `5`            |
 
 For example, to read the second sheet of a file named `Applications` in a folder named `2026 Search`, and redirect the CSV to `applications.csv`:
 
 ```sh
-npm start -- ./key.json --folder-name "2026 Search" --file-name Applications --sheet-index 1 > applications.csv
+npm start -- job-postings ./key.json --folder-name "2026 Search" --file-name Applications --sheet-index 1 > applications.csv
 ```
 
 Or pipe it directly into another CLI application:
 
 ```sh
-npm start -- ./key.json | my-other-cli
+npm start -- job-postings ./key.json | my-other-cli
 ```
 
 The service account only needs read-only access — it authenticates with the `spreadsheets.readonly` and `drive.readonly` scopes.
@@ -68,22 +75,22 @@ The service account only needs read-only access — it authenticates with the `s
 
 ```sh
 npm run build:tsc
-node dist/src/index.js ./key.json
+node dist/src/index.js job-postings ./key.json
 ```
 
-The package also declares a `job-postings` bin pointing at that same compiled entry point (`dist/src/index.js`), so once it's built, either `npm link` or `npm install -g .` exposes it as a `job-postings` command:
+The package also declares a `gleneseo-helpers` bin pointing at that same compiled entry point (`dist/src/index.js`), so once it's built, either `npm link` or `npm install -g .` exposes it as a `gleneseo-helpers` command:
 
 ```sh
 npm run build:tsc
 npm link
-job-postings ./key.json
+gleneseo-helpers job-postings ./key.json
 ```
 
 All flags from the table above work the same way regardless of how the CLI is invoked.
 
 ### Exit codes
 
-Each domain error the CLI can fail with exits with its own code, so scripts can distinguish failure causes without parsing the printed message:
+Each domain error the `job-postings` subcommand can fail with exits with its own code, so scripts can distinguish failure causes without parsing the printed message:
 
 | Exit code | Error                        | Meaning                                                   |
 | --------- | ---------------------------- | --------------------------------------------------------- |
@@ -202,20 +209,20 @@ The CLI's spans (see [`Effect.withSpan`](https://effect.website)) only export on
 - `npm run start:env` — loads [`.env.example`](.env.example) directly via Node's `--env-file` flag, no setup required:
 
   ```sh
-  npm run start:env -- ./key.json
+  npm run start:env -- job-postings ./key.json
   ```
 
 - Your own `.env` — copy `.env.example` to `.env` (customize it if your collector isn't on the defaults), then load it the same way:
 
   ```sh
   cp .env.example .env
-  npx tsx --env-file=.env src/index.ts ./key.json
+  npx tsx --env-file=.env src/index.ts job-postings ./key.json
   ```
 
 - Inline environment variables:
 
   ```sh
-  OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 OTEL_TRACES_EXPORTER=otlp npm start -- ./key.json
+  OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318 OTEL_TRACES_EXPORTER=otlp npm start -- job-postings ./key.json
   ```
 
 Traces show up in Grafana at [http://localhost:3000](http://localhost:3000) under the Tempo data source (Explore → Tempo → search by service name).
@@ -232,7 +239,7 @@ For everything else, after any bump run `npm run build` (formatting, lint, typec
 - **`prettier`** — pinned to an exact version so formatting output doesn't change unexpectedly. Bump it deliberately and run `npm run prettier:check`.
 - **`@types/node`** — stay on the `26.x` line to match the Node 26 runtime.
 - **`typescript`** — stay on 6.x until `typescript-eslint` supports 7 and `effect-language-service patch` (run by `npm install`'s `prepare` script) is confirmed to work with it.
-- **`googleapis`** — the automated tests don't call Google, so after a bump run the CLI against a real sheet (`npm start -- ./key.json`) to confirm authentication and the Drive and Sheets calls still work.
+- **`googleapis`** — the automated tests don't call Google, so after a bump run the CLI against a real sheet (`npm start -- job-postings ./key.json`) to confirm authentication and the Drive and Sheets calls still work.
 
 ## Commit messages
 

@@ -1,5 +1,5 @@
 import { Console, Duration, Effect } from "effect";
-import banner from "../banner.js";
+import printBanner from "../print-banner.js";
 import GoogleTools from "../../google/google-tools.js";
 import MissingFolderIdError from "../../google/missing-folder-id-error.js";
 import FilePath from "../../helpers/file-path.js";
@@ -83,9 +83,7 @@ const handleJobPostingsCommand: (
     const logStatus = (message: string) =>
       quiet ? Effect.void : Console.error(message);
 
-    if (!quiet && process.stdout.isTTY) {
-      yield* Console.log(banner);
-    }
+    yield* printBanner(quiet);
 
     yield* logStatus(`Authenticating with key file [${keyFilePath}].`);
     const auth = yield* googleTools.getAuth(keyFilePath);

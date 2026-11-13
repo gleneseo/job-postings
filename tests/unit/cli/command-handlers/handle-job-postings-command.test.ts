@@ -3,7 +3,6 @@ import { Duration, Effect, Layer, Runtime } from "effect";
 import { TestConsole } from "effect/testing";
 import type { Auth, drive_v3 } from "googleapis";
 import handleJobPostingsCommand from "../../../../src/cli/command-handlers/handle-job-postings-command.js";
-import banner from "../../../../src/cli/banner.js";
 import FolderSearchError from "../../../../src/google/folder-search-error.js";
 import FolderNotFoundError from "../../../../src/google/folder-not-found-error.js";
 import DuplicateFoldersFoundError from "../../../../src/google/duplicate-folders-found-error.js";
@@ -506,81 +505,26 @@ describe("handleJobPostingsCommand", () => {
       }),
   );
 
-  it.effect(
-    "should print the banner on an interactive terminal when not quiet",
-    () =>
-      Effect.gen(function* () {
-        const originalIsTTY = process.stdout.isTTY;
-        process.stdout.isTTY = true;
-        try {
-          const googleTools = makeGoogleToolsTestDouble({});
+  it.effect("should not log status messages when quiet", () =>
+    Effect.gen(function* () {
+      const googleTools = makeGoogleToolsTestDouble({});
 
-          yield* handleJobPostingsCommand(
-            keyFilePath,
-            folderName,
-            fileName,
-            sheetIndex,
-            false,
-            timeoutSeconds,
-          ).pipe(provideTestDoubles(googleTools));
+      yield* handleJobPostingsCommand(
+        keyFilePath,
+        folderName,
+        fileName,
+        sheetIndex,
+        true,
+        timeoutSeconds,
+      ).pipe(provideTestDoubles(googleTools));
 
-          assert.deepStrictEqual(yield* TestConsole.logLines, [
-            banner,
-            fakeCsv,
-          ]);
-        } finally {
-          process.stdout.isTTY = originalIsTTY;
-        }
-      }),
-  );
-
-  it.effect(
-    "should not print the banner on an interactive terminal when quiet",
-    () =>
-      Effect.gen(function* () {
-        const originalIsTTY = process.stdout.isTTY;
-        process.stdout.isTTY = true;
-        try {
-          const googleTools = makeGoogleToolsTestDouble({});
-
-          yield* handleJobPostingsCommand(
-            keyFilePath,
-            folderName,
-            fileName,
-            sheetIndex,
-            true,
-            timeoutSeconds,
-          ).pipe(provideTestDoubles(googleTools));
-
-          assert.deepStrictEqual(yield* TestConsole.logLines, [fakeCsv]);
-        } finally {
-          process.stdout.isTTY = originalIsTTY;
-        }
-      }),
-  );
-
-  it.effect(
-    "should not print the banner on a non-interactive terminal even when not quiet",
-    () =>
-      Effect.gen(function* () {
-        const originalIsTTY = process.stdout.isTTY;
-        process.stdout.isTTY = false;
-        try {
-          const googleTools = makeGoogleToolsTestDouble({});
-
-          yield* handleJobPostingsCommand(
-            keyFilePath,
-            folderName,
-            fileName,
-            sheetIndex,
-            false,
-            timeoutSeconds,
-          ).pipe(provideTestDoubles(googleTools));
-
-          assert.deepStrictEqual(yield* TestConsole.logLines, [fakeCsv]);
-        } finally {
-          process.stdout.isTTY = originalIsTTY;
-        }
-      }),
+      assert.deepStrictEqual(yield* TestConsole.logLines, [fakeCsv]);
+      assert.deepStrictEqual(
+        (yield* TestConsole.errorLines).filter(
+          (line) => line === msgAuthenticating,
+        ),
+        [],
+      );
+    }),
   );
 });
