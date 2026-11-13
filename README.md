@@ -49,7 +49,7 @@ npm start -- job-postings
 
 An ASCII banner prints before the command runs, but only on an interactive terminal (stdout is a TTY) — it's skipped when output is piped, redirected, or otherwise non-interactive, so it doesn't clutter scripted or CI runs. Passing `--quiet` also suppresses it. Every subcommand, and the bare `gleneseo-helpers` root command (which accepts its own `--quiet`/`-q`), prints the same banner; the `help` subcommand always shows it on a TTY.
 
-**Key file lookup.** If `--key-file-path` is given, that file is used and the command fails if it does not exist. Otherwise the command looks in the well-known location `gleneseo-helpers/job-postings.json` under `$XDG_CONFIG_HOME`, falling back to `~/.config` when `XDG_CONFIG_HOME` is unset, empty, or not an absolute path, and fails if no file exists there. Only regular files count. The `gleneseo-helpers` directory is shared by the other subcommands for their own configuration.
+**Key file lookup.** If `--key-file-path` is given, that file is used and the command fails if it does not exist. Otherwise the command looks in the well-known location `gleneseo-helpers/job-postings.json` under `$XDG_CONFIG_HOME`, falling back to `~/.config` when `XDG_CONFIG_HOME` is unset, empty, or not an absolute path, and fails if no file exists there. Only regular files count. The `gleneseo-helpers` directory is shared by the other subcommands for their own configuration; `gmail` looks for its OAuth2 credentials file the same way, with `--credentials-file-path` and `gleneseo-helpers/gmail.json`.
 
 Progress messages are logged to standard error, keeping standard out free for the CSV data.
 
@@ -99,24 +99,25 @@ All flags from the table above work the same way regardless of how the CLI is in
 
 Each domain error the `job-postings` subcommand can fail with exits with its own code, so scripts can distinguish failure causes without parsing the printed message:
 
-| Exit code | Error                        | Meaning                                                   |
-| --------- | ---------------------------- | --------------------------------------------------------- |
-| `0`       | —                            | Success.                                                  |
-| `1`       | —                            | Unexpected failure not covered by the codes below.        |
-| `10`      | `FolderSearchError`          | The Drive folder search request failed.                   |
-| `11`      | `FolderNotFoundError`        | No folder matched `--folder-name`.                        |
-| `12`      | `DuplicateFoldersFoundError` | More than one folder matched `--folder-name`.             |
-| `13`      | `MissingFolderIdError`       | The matched folder is missing an ID.                      |
-| `20`      | `FileSearchError`            | The Drive file search request failed.                     |
-| `21`      | `FileNotFoundError`          | No file matched `--file-name` in the resolved folder.     |
-| `22`      | `DuplicateFilesFoundError`   | More than one file matched `--file-name`.                 |
-| `23`      | `MissingFileIdError`         | The matched file is missing an ID.                        |
-| `30`      | `SheetFetchError`            | Fetching the file's sheets failed.                        |
-| `31`      | `InvalidSheetIndexError`     | `--sheet-index` is outside the range of available sheets. |
-| `32`      | `SheetValuesFetchError`      | Fetching the target sheet's values failed.                |
-| `33`      | `NoSheetDataError`           | The target sheet does not contain any rows.               |
-| `40`      | `KeyFileNotFoundError`       | No key file exists at the given or well-known path.       |
-| `130`     | —                            | Interrupted (e.g. `Ctrl+C`).                              |
+| Exit code | Error                          | Meaning                                                            |
+| --------- | ------------------------------ | ------------------------------------------------------------------ |
+| `0`       | —                              | Success.                                                           |
+| `1`       | —                              | Unexpected failure not covered by the codes below.                 |
+| `10`      | `FolderSearchError`            | The Drive folder search request failed.                            |
+| `11`      | `FolderNotFoundError`          | No folder matched `--folder-name`.                                 |
+| `12`      | `DuplicateFoldersFoundError`   | More than one folder matched `--folder-name`.                      |
+| `13`      | `MissingFolderIdError`         | The matched folder is missing an ID.                               |
+| `20`      | `FileSearchError`              | The Drive file search request failed.                              |
+| `21`      | `FileNotFoundError`            | No file matched `--file-name` in the resolved folder.              |
+| `22`      | `DuplicateFilesFoundError`     | More than one file matched `--file-name`.                          |
+| `23`      | `MissingFileIdError`           | The matched file is missing an ID.                                 |
+| `30`      | `SheetFetchError`              | Fetching the file's sheets failed.                                 |
+| `31`      | `InvalidSheetIndexError`       | `--sheet-index` is outside the range of available sheets.          |
+| `32`      | `SheetValuesFetchError`        | Fetching the target sheet's values failed.                         |
+| `33`      | `NoSheetDataError`             | The target sheet does not contain any rows.                        |
+| `40`      | `KeyFileNotFoundError`         | No key file exists at the given or well-known path.                |
+| `41`      | `CredentialsFileNotFoundError` | No OAuth2 credentials file exists at the given or well-known path. |
+| `130`     | —                              | Interrupted (e.g. `Ctrl+C`).                                       |
 
 A request that exceeds `--timeout` fails with the same error and exit code its underlying call would otherwise use (e.g. a folder search that times out is a `FolderSearchError`, exit `10`) — timing out doesn't introduce a separate code.
 

@@ -1,6 +1,7 @@
 import { Effect } from "effect";
 import { type CliError, Command, Flag } from "effect/cli";
 import handleGleneseoHelpersCommand from "../command-handlers/handle-gleneseo-helpers-command.js";
+import handleGmailCommand from "../command-handlers/handle-gmail-command.js";
 import handleJobPostingsCommand from "../command-handlers/handle-job-postings-command.js";
 import printBanner from "../print-banner.js";
 import gmailCommand from "./gmail-command.js";
@@ -14,6 +15,7 @@ const quiet = Flag.Boolean("quiet").pipe(
 );
 
 type JobPostingsHandlerEffect = ReturnType<typeof handleJobPostingsCommand>;
+type GmailHandlerEffect = ReturnType<typeof handleGmailCommand>;
 
 const helpCommand = Command.make(
   "help",
@@ -23,8 +25,12 @@ const helpCommand = Command.make(
   // body.
   (): Effect.Effect<
     void,
-    Effect.Error<JobPostingsHandlerEffect> | CliError.CliError,
-    Effect.Services<JobPostingsHandlerEffect> | Command.Environment
+    | Effect.Error<JobPostingsHandlerEffect>
+    | Effect.Error<GmailHandlerEffect>
+    | CliError.CliError,
+    | Effect.Services<JobPostingsHandlerEffect>
+    | Effect.Services<GmailHandlerEffect>
+    | Command.Environment
   > =>
     printBanner(false).pipe(
       Effect.andThen(
