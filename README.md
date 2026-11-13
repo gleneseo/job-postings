@@ -6,7 +6,7 @@ A CLI that downloads a Google Sheet of job postings, sorts it, and prints it to 
 
 - Node.js `>=26.13.0 <27`
 - npm `^12.2.2`
-- A running Docker daemon — required by the integration tests (and therefore by `npm test` and `npm run test:coverage`), and separately by `npm run build`, which also builds the production image. See [Testing](#testing) and [Docker](#docker).
+- A running Docker daemon — required by the integration tests (and therefore by `npm test`, `npm run test:coverage`, and `npm run build`). See [Testing](#testing).
 - A Google Cloud service account with the Drive and Sheets APIs enabled, its JSON key file downloaded locally, and read access to the target Drive folder (share the folder with the service account's email). See [Usage](#usage).
 
 ## Getting started
@@ -107,22 +107,20 @@ A request that exceeds `--timeout` fails with the same error and exit code its u
 
 ## Scripts
 
-| Script                     | Description                                                                                |
-| -------------------------- | ------------------------------------------------------------------------------------------ |
-| `npm run build`            | Clean, check formatting, lint, compile, test, and build the Docker image. Requires Docker. |
-| `npm run build:tsc`        | Compile TypeScript.                                                                        |
-| `npm start`                | Run the CLI.                                                                               |
-| `npm run start:env`        | Run the CLI with `.env.example` loaded, exporting traces to the local `otel-collector`.    |
-| `npm test`                 | Run every test project. Requires Docker.                                                   |
-| `npm run test:coverage`    | Run every test project with coverage. Requires Docker.                                     |
-| `npm run test:unit`        | Run the unit project only. No Docker required.                                             |
-| `npm run test:integration` | Run the integration project only. Requires Docker.                                         |
-| `npm run lint`             | Run ESLint.                                                                                |
-| `npm run prettier:check`   | Check formatting.                                                                          |
-| `npm run prettier:write`   | Apply formatting.                                                                          |
-| `npm run clean`            | Remove build and coverage output.                                                          |
-| `npm run docker:build`     | Build the production Docker image. Requires Docker.                                        |
-| `npm run docker:run`       | Run the production Docker image. Requires Docker.                                          |
+| Script                     | Description                                                                             |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| `npm run build`            | Clean, check formatting, lint, compile, and test. Requires Docker.                      |
+| `npm run build:tsc`        | Compile TypeScript.                                                                     |
+| `npm start`                | Run the CLI.                                                                            |
+| `npm run start:env`        | Run the CLI with `.env.example` loaded, exporting traces to the local `otel-collector`. |
+| `npm test`                 | Run every test project. Requires Docker.                                                |
+| `npm run test:coverage`    | Run every test project with coverage. Requires Docker.                                  |
+| `npm run test:unit`        | Run the unit project only. No Docker required.                                          |
+| `npm run test:integration` | Run the integration project only. Requires Docker.                                      |
+| `npm run lint`             | Run ESLint.                                                                             |
+| `npm run prettier:check`   | Check formatting.                                                                       |
+| `npm run prettier:write`   | Apply formatting.                                                                       |
+| `npm run clean`            | Remove build and coverage output.                                                       |
 
 ## Testing
 
@@ -164,48 +162,6 @@ This is separate from [Docker Compose](#docker-compose) below — the integratio
 Coverage is configured once at the root of `vitest.config.ts` and is measured **across all projects**, not per project. The 100% threshold is evaluated against the union of what every project exercises in `src`, so a line covered only by an integration test counts the same as one covered only by a unit test.
 
 Because of that, only `npm run test:coverage` (and `npm run build`, which calls it) produces meaningful numbers. Running a single project does not collect coverage, since one project's figures would be checked against a threshold that assumes all of them. Note that plain `npm test` does not enforce the threshold either — a green `npm test` is not a guarantee that `npm run build` will pass.
-
-## Docker
-
-The `Dockerfile` builds a production image: it compiles TypeScript in a build stage, installs production-only dependencies in a separate stage, then assembles a minimal runtime image that runs as the non-root `node` user. `ENTRYPOINT` runs `node dist/index.js`, so any arguments passed to `docker run` after the image name are forwarded to the CLI rather than replacing the entrypoint.
-
-`npm run build` builds this image as one of its steps (via `npm run docker:build`), so a running Docker daemon is required to build the project, not just to test it.
-
-### Build the image
-
-```sh
-npm run docker:build
-```
-
-which is equivalent to:
-
-```sh
-docker build . --tag job-postings:latest
-```
-
-### Run the container
-
-```sh
-npm run docker:run
-```
-
-which is equivalent to:
-
-```sh
-docker run --rm -it -t job-postings:latest
-```
-
-Pass CLI arguments after the image name, e.g. to show help:
-
-```sh
-docker run --rm job-postings:latest --help
-```
-
-Via `npm run docker:run`, forward arguments after `--`:
-
-```sh
-npm run docker:run -- --help
-```
 
 ## Docker Compose
 
@@ -268,13 +224,13 @@ Traces show up in Grafana at [http://localhost:3000](http://localhost:3000) unde
 
 Effect packages (`effect`, `@effect/*`) are bumped with the `/check-effect-update` Claude Code skill, which reads the changelog for every release in between, flags breaking changes, then applies and verifies the bump. After an Effect bump, check out the matching tag (e.g. `effect@4.1.3`) in the local Effect source clone described in [AGENTS.md](./AGENTS.md) so it stays in step with the installed version.
 
-For everything else, after any bump run `npm run build` (formatting, lint, typecheck, coverage, Docker image). Some packages must move together or stay put:
+For everything else, after any bump run `npm run build` (formatting, lint, typecheck, coverage). Some packages must move together or stay put:
 
 - **`vitest` and `@vitest/coverage-v8`** — keep them on the same version; the coverage package peers on the exact vitest version.
 - **`testcontainers` and `@testcontainers/postgresql`** — update as a pair.
 - **`@commitlint/cli` and `@commitlint/config-conventional`** — update as a pair.
 - **`prettier`** — pinned to an exact version so formatting output doesn't change unexpectedly. Bump it deliberately and run `npm run prettier:check`.
-- **`@types/node`** — stay on the `26.x` line to match the Node 26 runtime and Docker image.
+- **`@types/node`** — stay on the `26.x` line to match the Node 26 runtime.
 - **`typescript`** — stay on 6.x until `typescript-eslint` supports 7 and `effect-language-service patch` (run by `npm install`'s `prepare` script) is confirmed to work with it.
 - **`googleapis`** — the automated tests don't call Google, so after a bump run the CLI against a real sheet (`npm start -- ./key.json`) to confirm authentication and the Drive and Sheets calls still work.
 
