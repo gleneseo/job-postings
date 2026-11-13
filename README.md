@@ -230,7 +230,21 @@ Traces show up in Grafana at [http://localhost:3000](http://localhost:3000) unde
 
 ## Updating dependencies
 
-Effect packages (`effect`, `@effect/*`) are bumped with the `/check-effect-update` Claude Code skill, which reads the changelog for every release in between, flags breaking changes, then applies and verifies the bump. After an Effect bump, check out the matching tag (e.g. `effect@4.1.3`) in the local Effect source clone described in [CLAUDE.md](./CLAUDE.md) so it stays in step with the installed version.
+Effect packages (`effect`, `@effect/*`) are bumped with the `/check-effect-update` Claude Code skill, which reads the changelog for every release in between, flags breaking changes, then applies and verifies the bump. After an Effect bump, update the vendored Effect source (see below) so it stays in step with the installed version.
+
+### Updating the vendored Effect source
+
+The Effect repository is vendored as a git subtree at `vendors/effect`, pinned to the release tag matching the installed `effect` version. After bumping `effect`, pull the matching tag (e.g. `effect@4.1.5`):
+
+```bash
+git subtree pull \
+  --prefix=vendors/effect \
+  https://github.com/Effect-TS/effect.git \
+  effect@4.1.5 \
+  --squash
+```
+
+Run it from the repository root on a feature branch with a clean working tree. The command creates a merge commit; pass `-m "chore: vendor effect@4.1.5"` to keep it Conventional Commits compliant.
 
 For everything else, after any bump run `npm run build` (formatting, lint, typecheck, coverage). Some packages must move together or stay put:
 
