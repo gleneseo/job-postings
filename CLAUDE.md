@@ -2,7 +2,7 @@
 
 ## Local Effect Source
 
-The Effect v4 repository is cloned to `~/.local/share/vendors/effect` for reference. Use this to explore APIs,
+The Effect v4 repository is vendored as a git subtree at `vendors/effect` for reference. Use this to explore APIs,
 find usage examples, and understand implementation details when the documentation isn't enough.
 
 ## Commit messages
