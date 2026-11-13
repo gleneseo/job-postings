@@ -25,6 +25,10 @@ Use `!` after the type/scope (or a `BREAKING CHANGE:` footer) to indicate a brea
 
 Never commit directly to `master`. All changes must go through a pull request from a feature branch.
 
+## Stacked PRs
+
+When asked to stack PRs, create each PR with `--base` set to its parent branch, then run `gh stack link <PR numbers, bottom to top>` so GitHub treats them as a stack. Verify the result with `gh pr view <number>` and the stack URL that `gh stack link` prints.
+
 ## Git stash
 
 Any `git stash` operation must include untracked files (i.e. pass `-u`/`--include-untracked`).
