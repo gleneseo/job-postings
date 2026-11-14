@@ -12,7 +12,7 @@ describe("GmailFetchError", () => {
   it("should expose a distinct exit code and skip the default error log", () => {
     const error = new GmailFetchError({ messageId: "m1", cause: "bad" });
 
-    expect(Runtime.getErrorExitCode(error)).toBe(44);
+    expect(Runtime.getErrorExitCode(error)).toBe(52);
     expect(error[Runtime.errorReported]).toBe(false);
   });
 

@@ -12,7 +12,7 @@ describe("EmailStoreError", () => {
   it("should expose a distinct exit code and skip the default error log", () => {
     const error = new EmailStoreError({ path: "/a.sqlite", cause: "bad" });
 
-    expect(Runtime.getErrorExitCode(error)).toBe(45);
+    expect(Runtime.getErrorExitCode(error)).toBe(60);
     expect(error[Runtime.errorReported]).toBe(false);
   });
 

@@ -12,7 +12,7 @@ describe("CredentialsReadError", () => {
   it("should expose a distinct exit code and skip the default error log", () => {
     const error = new CredentialsReadError({ path: "/a.json", cause: "bad" });
 
-    expect(Runtime.getErrorExitCode(error)).toBe(41);
+    expect(Runtime.getErrorExitCode(error)).toBe(42);
     expect(error[Runtime.errorReported]).toBe(false);
   });
 

@@ -13,7 +13,7 @@ class CredentialsReadError extends Schema.TaggedError<CredentialsReadError>()(
   },
 ) {
   /** Read by NodeRuntime's default teardown to set the process exit code */
-  override readonly [Runtime.errorExitCode] = 41;
+  override readonly [Runtime.errorExitCode] = 42;
 
   /** Already logged with a human-readable message; skip NodeRuntime's default error log */
   override readonly [Runtime.errorReported] = false;

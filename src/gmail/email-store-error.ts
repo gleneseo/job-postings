@@ -13,7 +13,7 @@ class EmailStoreError extends Schema.TaggedError<EmailStoreError>()(
   },
 ) {
   /** Read by NodeRuntime's default teardown to set the process exit code */
-  override readonly [Runtime.errorExitCode] = 45;
+  override readonly [Runtime.errorExitCode] = 60;
 
   /** Already logged with a human-readable message; skip NodeRuntime's default error log */
   override readonly [Runtime.errorReported] = false;

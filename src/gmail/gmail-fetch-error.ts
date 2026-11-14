@@ -13,7 +13,7 @@ class GmailFetchError extends Schema.TaggedError<GmailFetchError>()(
   },
 ) {
   /** Read by NodeRuntime's default teardown to set the process exit code */
-  override readonly [Runtime.errorExitCode] = 44;
+  override readonly [Runtime.errorExitCode] = 52;
 
   /** Already logged with a human-readable message; skip NodeRuntime's default error log */
   override readonly [Runtime.errorReported] = false;

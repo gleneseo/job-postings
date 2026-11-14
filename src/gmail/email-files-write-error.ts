@@ -13,7 +13,7 @@ class EmailFilesWriteError extends Schema.TaggedError<EmailFilesWriteError>()(
   },
 ) {
   /** Read by NodeRuntime's default teardown to set the process exit code */
-  override readonly [Runtime.errorExitCode] = 46;
+  override readonly [Runtime.errorExitCode] = 61;
 
   /** Already logged with a human-readable message; skip NodeRuntime's default error log */
   override readonly [Runtime.errorReported] = false;

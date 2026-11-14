@@ -12,7 +12,7 @@ describe("EmailFilesWriteError", () => {
   it("should expose a distinct exit code and skip the default error log", () => {
     const error = new EmailFilesWriteError({ directory: "out", cause: "bad" });
 
-    expect(Runtime.getErrorExitCode(error)).toBe(46);
+    expect(Runtime.getErrorExitCode(error)).toBe(61);
     expect(error[Runtime.errorReported]).toBe(false);
   });
 

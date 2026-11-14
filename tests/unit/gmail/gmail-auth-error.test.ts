@@ -12,7 +12,7 @@ describe("GmailAuthError", () => {
   it("should expose a distinct exit code and skip the default error log", () => {
     const error = new GmailAuthError({ tokenPath: "/t.json", cause: "bad" });
 
-    expect(Runtime.getErrorExitCode(error)).toBe(42);
+    expect(Runtime.getErrorExitCode(error)).toBe(50);
     expect(error[Runtime.errorReported]).toBe(false);
   });
 

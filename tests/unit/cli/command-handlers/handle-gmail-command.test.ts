@@ -406,7 +406,7 @@ describe("handleGmailCommand", () => {
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(failure).toStrictEqual(error);
-        expect(Runtime.getErrorExitCode(failure)).toBe(41);
+        expect(Runtime.getErrorExitCode(failure)).toBe(42);
         assert.deepStrictEqual((yield* TestConsole.errorLines).slice(-1), [
           `❌ Could not read OAuth2 credentials file [${credentials}] (bad json). Make sure it is a Google OAuth client JSON file.`,
         ]);
@@ -433,7 +433,7 @@ describe("handleGmailCommand", () => {
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(failure).toStrictEqual(error);
-        expect(Runtime.getErrorExitCode(failure)).toBe(42);
+        expect(Runtime.getErrorExitCode(failure)).toBe(50);
         assert.deepStrictEqual((yield* TestConsole.errorLines).slice(-1), [
           `❌ Error while authorizing with Gmail (invalid_grant). If your authorization has expired, delete the token file [${token}] and try again.`,
         ]);
@@ -459,7 +459,7 @@ describe("handleGmailCommand", () => {
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(failure).toStrictEqual(error);
-        expect(Runtime.getErrorExitCode(failure)).toBe(43);
+        expect(Runtime.getErrorExitCode(failure)).toBe(51);
         assert.deepStrictEqual((yield* TestConsole.errorLines).slice(-1), [
           "❌ Error while searching Gmail (quota). Please check your setup and try again.",
         ]);
@@ -487,7 +487,7 @@ describe("handleGmailCommand", () => {
 
         expect(doubles.saveEmails).not.toHaveBeenCalled();
         expect(failure).toStrictEqual(error);
-        expect(Runtime.getErrorExitCode(failure)).toBe(44);
+        expect(Runtime.getErrorExitCode(failure)).toBe(52);
         assert.deepStrictEqual((yield* TestConsole.errorLines).slice(-1), [
           "❌ Error while fetching message [new] (gone). Please check your setup and try again.",
         ]);
@@ -515,7 +515,7 @@ describe("handleGmailCommand", () => {
 
         expect(doubles.authorize).not.toHaveBeenCalled();
         expect(failure).toStrictEqual(error);
-        expect(Runtime.getErrorExitCode(failure)).toBe(45);
+        expect(Runtime.getErrorExitCode(failure)).toBe(60);
         assert.deepStrictEqual(yield* TestConsole.errorLines, [
           `❌ Error while accessing the email database [${db}] (locked). Please check the file and try again.`,
         ]);
@@ -545,7 +545,7 @@ describe("handleGmailCommand", () => {
         expect(failure).toStrictEqual(
           new EmailFilesWriteError({ directory: "output", cause: "read-only" }),
         );
-        expect(Runtime.getErrorExitCode(failure)).toBe(46);
+        expect(Runtime.getErrorExitCode(failure)).toBe(61);
         assert.deepStrictEqual((yield* TestConsole.errorLines).slice(-1), [
           "❌ Error while saving emails to [output] (read-only). Please check the directory and try again.",
         ]);

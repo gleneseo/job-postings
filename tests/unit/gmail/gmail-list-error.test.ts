@@ -10,7 +10,7 @@ describe("GmailListError", () => {
   it("should expose a distinct exit code and skip the default error log", () => {
     const error = new GmailListError({ cause: "bad" });
 
-    expect(Runtime.getErrorExitCode(error)).toBe(43);
+    expect(Runtime.getErrorExitCode(error)).toBe(51);
     expect(error[Runtime.errorReported]).toBe(false);
   });
 
