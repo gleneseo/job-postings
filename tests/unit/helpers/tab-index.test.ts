@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Schema } from "effect";
 
-import TabIndex from "../../src/helpers/tab-index.js";
+import TabIndex from "../../../src/helpers/tab-index.js";
 
 const isTabIndex = Schema.is(TabIndex);
 

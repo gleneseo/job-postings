@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Schema } from "effect";
 
-import FilePath from "../../src/helpers/file-path.js";
+import FilePath from "../../../src/helpers/file-path.js";
 
 const isFilePath = Schema.is(FilePath);
 

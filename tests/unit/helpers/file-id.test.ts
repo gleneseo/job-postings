@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Schema } from "effect";
 
-import FileId from "../../src/helpers/file-id.js";
+import FileId from "../../../src/helpers/file-id.js";
 
 const isFileId = Schema.is(FileId);
 
