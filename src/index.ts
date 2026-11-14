@@ -12,6 +12,8 @@ import gleneseoHelpersCommand from "./cli/commands/gleneseo-helpers-command.js";
 import ConfigFileLocator from "./config/config-file-locator.js";
 import CredentialsFileResolver from "./config/credentials-file-resolver.js";
 import KeyFileResolver from "./config/key-file-resolver.js";
+import EmailStore from "./gmail/email-store.js";
+import GmailTools from "./gmail/gmail-tools.js";
 import GoogleTools from "./google/google-tools.js";
 
 /**
@@ -46,12 +48,14 @@ Command.run(gleneseoHelpersCommand, { version: packageJson.version }).pipe(
   Effect.provide(
     Layer.mergeAll(
       GoogleTools.layer,
+      GmailTools.layer,
+      EmailStore.layer,
       KeyFileResolver.layer,
       CredentialsFileResolver.layer,
       ObservabilityLayer,
       CliConfigLayer,
     ).pipe(
-      Layer.provide(ConfigFileLocator.layer),
+      Layer.provideMerge(ConfigFileLocator.layer),
       Layer.provideMerge(NodeServices.layer),
     ),
   ),

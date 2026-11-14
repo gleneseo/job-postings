@@ -1,5 +1,12 @@
 import { assert, describe, it } from "@effect/vitest";
-import { ConfigProvider, Effect, FileSystem, Layer, Option } from "effect";
+import {
+  ConfigProvider,
+  Effect,
+  FileSystem,
+  Layer,
+  Option,
+  PlatformError,
+} from "effect";
 import { NodePath } from "@effect/platform-node";
 import ConfigFileLocator from "../../../src/config/config-file-locator.js";
 import FilePath from "../../../src/helpers/file-path.js";
@@ -14,7 +21,14 @@ const makeLayer = (files: Record<string, "File" | "Directory">) =>
         stat: (path) =>
           path in files
             ? Effect.succeed({ type: files[path] } as FileSystem.File.Info)
-            : Effect.fail(new Error("ENOENT") as never),
+            : Effect.fail(
+                PlatformError.systemError({
+                  _tag: "NotFound",
+                  module: "FileSystem",
+                  method: "stat",
+                  pathOrDescriptor: path,
+                }),
+              ),
       }),
     ),
     Layer.provide(NodePath.layer),

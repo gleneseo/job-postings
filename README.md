@@ -5,7 +5,7 @@ A CLI of Gleneseo helper commands, each exposed as a subcommand. Run `gleneseo-h
 | Subcommand     | Description                                                                              |
 | -------------- | ---------------------------------------------------------------------------------------- |
 | `job-postings` | Downloads a Google Sheet of job postings, sorts it, and prints it to standard out as CSV |
-| `gmail`        | Placeholder for downloading emails from a Gmail inbox; not implemented yet               |
+| `gmail`        | Downloads inbox emails into SQLite and prints them to standard out as a table            |
 | `help`         | Shows the application help                                                               |
 
 ## Requirements
@@ -14,6 +14,7 @@ A CLI of Gleneseo helper commands, each exposed as a subcommand. Run `gleneseo-h
 - npm `^12.2.2`
 - A running Docker daemon — required by the integration tests (and therefore by `npm test`, `npm run test:coverage`, and `npm run build`). See [Testing](#testing).
 - For the `job-postings` subcommand: a Google Cloud service account with the Drive and Sheets APIs enabled, its JSON key file downloaded locally, and read access to the target Drive folder (share the folder with the service account's email). See [Usage](#usage).
+- For the `gmail` subcommand: a Google OAuth client (Desktop app) with the Gmail API enabled, its JSON credentials file downloaded locally. See [Google OAuth client setup](#google-oauth-client-setup).
 
 ## Getting started
 
@@ -37,6 +38,25 @@ The `job-postings` subcommand authenticates as a Google Cloud service account, s
 
 With that done, save the key file where `job-postings` looks for it by default, or pass its path with `--key-file-path` (see [Usage](#usage)).
 
+## Google OAuth client setup
+
+Unlike `job-postings`, the `gmail` subcommand needs an OAuth client rather than a service account, because it reads your own mailbox. Create one once, for free:
+
+1. In the [Google Cloud Console](https://console.cloud.google.com/), select or create a project and enable the [Gmail API](https://console.cloud.google.com/apis/library/gmail.googleapis.com) for it.
+2. Open **APIs & Services → OAuth consent screen** (or **Google Auth Platform**), click **Get started**, and choose **External** as the audience (**Internal** only for a Google Workspace mailbox that belongs to your organization).
+3. Under **Audience**, add the Gmail address you will download from as a **test user**. While the app is in "Testing" status, only test users can authorize it.
+4. Open **APIs & Services → Credentials → Create credentials → OAuth client ID**, choose the **Desktop app** application type, and download the JSON file.
+5. Save it where `gmail` looks for it by default, or pass its path with `--credentials`:
+
+```sh
+mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/gleneseo-helpers"
+mv ~/Downloads/client_secret_*.json "${XDG_CONFIG_HOME:-$HOME/.config}/gleneseo-helpers/gmail.json"
+```
+
+Treat this file as a secret.
+
+If you used the standalone `gmail-downloader` application, move its `access.json`, `token.json`, and `emails.sqlite` from `~/.config/gmail-downloader/` to `gmail.json`, `gmail-token.json`, and `gmail.sqlite` in the `gleneseo-helpers` directory to keep your authorization and downloaded emails.
+
 ## Usage
 
 ### `job-postings`
@@ -49,7 +69,7 @@ npm start -- job-postings
 
 An ASCII banner prints before the command runs, but only on an interactive terminal (stdout is a TTY) — it's skipped when output is piped, redirected, or otherwise non-interactive, so it doesn't clutter scripted or CI runs. Passing `--quiet` also suppresses it. Every subcommand, and the bare `gleneseo-helpers` root command (which accepts its own `--quiet`/`-q`), prints the same banner; the `help` subcommand always shows it on a TTY.
 
-**Key file lookup.** If `--key-file-path` is given, that file is used and the command fails if it does not exist. Otherwise the command looks in the well-known location `gleneseo-helpers/job-postings.json` under `$XDG_CONFIG_HOME`, falling back to `~/.config` when `XDG_CONFIG_HOME` is unset, empty, or not an absolute path, and fails if no file exists there. Only regular files count. The `gleneseo-helpers` directory is shared by the other subcommands for their own configuration; `gmail` looks for its OAuth2 credentials file the same way, with `--credentials-file-path` and `gleneseo-helpers/gmail.json`.
+**Key file lookup.** If `--key-file-path` is given, that file is used and the command fails if it does not exist. Otherwise the command looks in the well-known location `gleneseo-helpers/job-postings.json` under `$XDG_CONFIG_HOME`, falling back to `~/.config` when `XDG_CONFIG_HOME` is unset, empty, or not an absolute path, and fails if no file exists there. Only regular files count. The `gleneseo-helpers` directory is shared by the other subcommands for their own configuration; `gmail` looks for its OAuth2 credentials file the same way, with `--credentials` and `gleneseo-helpers/gmail.json`.
 
 Progress messages are logged to standard error, keeping standard out free for the CSV data.
 
@@ -76,6 +96,48 @@ npm start -- job-postings | my-other-cli
 
 The service account only needs read-only access — it authenticates with the `spreadsheets.readonly` and `drive.readonly` scopes.
 
+### `gmail`
+
+Downloads inbox emails from one or more senders (an address like `jobs@example.com`, or a whole domain like `example.com`) with the Gmail API. Each email is:
+
+- stored in a local SQLite file, so later runs only fetch new messages,
+- printed to standard out as a table, oldest first, and
+- optionally saved as a plain-text file (`--output`).
+
+```sh
+npm start -- gmail [flags]
+```
+
+The subcommand is read-only: it requests only the `gmail.readonly` scope and never modifies or deletes your mail. Progress messages are logged to standard error, keeping standard out free for the table.
+
+**File lookup.** The OAuth2 credentials file is found like the `job-postings` key file: `--credentials` if given, otherwise `gleneseo-helpers/gmail.json` in the Config directory, failing if no regular file exists there. The OAuth token and the SQLite database default to `gleneseo-helpers/gmail-token.json` and `gleneseo-helpers/gmail.sqlite` in the same directory, and are created on the first run.
+
+| Flag               | Description                                                                                                                                                                      | Default                                      |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `--sender`, `-s`   | An email address or domain to search for (`from:` in Gmail). Repeat it for several senders; an email from any of them matches. Without it, every inbox email is downloaded.      | —                                            |
+| `--credentials`    | Path to the OAuth2 credentials JSON file                                                                                                                                         | `gleneseo-helpers/gmail.json`                |
+| `--database`, `-d` | The SQLite file to write emails to                                                                                                                                               | `gleneseo-helpers/gmail.sqlite`              |
+| `--token`, `-t`    | Where to cache the OAuth token                                                                                                                                                   | `gleneseo-helpers/gmail-token.json`          |
+| `--output[=dir]`   | Also save each email as `<subject>.txt` (`.html` if it has only an HTML body) directly in `dir`, including emails already in the database. The directory must be given with `=`. | off; `output` when the flag has no directory |
+| `--quiet`, `-q`    | Suppress the banner and status messages; runtime errors print                                                                                                                    | `false`                                      |
+
+For example:
+
+```sh
+# Every email in the inbox
+npm start -- gmail
+
+# Several senders at once, also saving each email to files in output/
+npm start -- gmail --sender linkedin.com --sender ziprecruiter.com --output
+
+# A single address, saving files to a chosen directory
+npm start -- gmail --sender jobs@example.com --output=./emails
+```
+
+The first run opens your browser to a Google consent page. Choose the test user, click **Advanced → Go to <app name> (unsafe)** past the "Google hasn't verified this app" warning (expected, since you created the app), and approve read-only access. The token is then cached, so later runs don't open the browser. While the consent screen is in "Testing" status, Google expires the token after about 7 days; delete the token file and run again to re-authorize.
+
+Saved files have `From`, `To`, `Subject`, and `Received` headers followed by the plain-text body. HTML-only emails keep their HTML body and put the same headers in HTML comments at the top of the file, with any `--` in a header value separated (`- -`) so it can't end the comment. Files are written as UTF-8, and HTML files start with a UTF-8 byte order mark so browsers decode them correctly even when the email's HTML declares another charset (e.g. `iso-8859-1`). Control characters other than tab, newline, and carriage return are stripped (so a saved email can't contain terminal escape sequences or NUL bytes), and line breaks in header values are collapsed. If two emails share a subject, the later one's file name gets its Gmail message ID appended.
+
 ### Running the compiled CLI
 
 `npm start` runs the CLI from source via `tsx`, with no build step. To run the compiled output instead:
@@ -97,7 +159,7 @@ All flags from the table above work the same way regardless of how the CLI is in
 
 ### Exit codes
 
-Each domain error the `job-postings` subcommand can fail with exits with its own code, so scripts can distinguish failure causes without parsing the printed message:
+Each domain error a subcommand can fail with exits with its own code, so scripts can distinguish failure causes without parsing the printed message:
 
 | Exit code | Error                          | Meaning                                                            |
 | --------- | ------------------------------ | ------------------------------------------------------------------ |
@@ -117,6 +179,12 @@ Each domain error the `job-postings` subcommand can fail with exits with its own
 | `33`      | `NoSheetDataError`             | The target sheet does not contain any rows.                        |
 | `40`      | `KeyFileNotFoundError`         | No key file exists at the given or well-known path.                |
 | `41`      | `CredentialsFileNotFoundError` | No OAuth2 credentials file exists at the given or well-known path. |
+| `42`      | `CredentialsReadError`         | The OAuth2 credentials file is not a valid OAuth client file.      |
+| `50`      | `GmailAuthError`               | Authorizing with Gmail, or caching the token, failed.              |
+| `51`      | `GmailListError`               | Searching Gmail for matching messages failed.                      |
+| `52`      | `GmailFetchError`              | Fetching or parsing a message failed.                              |
+| `60`      | `EmailStoreError`              | Reading or writing the SQLite email database failed.               |
+| `61`      | `EmailFilesWriteError`         | Writing the email files failed.                                    |
 | `130`     | —                              | Interrupted (e.g. `Ctrl+C`).                                       |
 
 A request that exceeds `--timeout` fails with the same error and exit code its underlying call would otherwise use (e.g. a folder search that times out is a `FolderSearchError`, exit `10`) — timing out doesn't introduce a separate code.
