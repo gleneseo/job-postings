@@ -73,14 +73,14 @@ An ASCII banner prints before the command runs, but only on an interactive termi
 
 Progress messages are logged to standard error, keeping standard out free for the CSV data.
 
-| Argument/Flag         | Description                                                   | Default        |
-| --------------------- | ------------------------------------------------------------- | -------------- |
-| `--key-file-path`     | Path to the Google service account JSON key file              | See below      |
-| `--folder-name`       | The Google Drive folder that contains the sheet file          | `Claude`       |
-| `--file-name`         | The sheet file name                                           | `Job Postings` |
-| `--sheet-index`, `-i` | The 0-based index of the target sheet                         | `0`            |
-| `--quiet`, `-q`       | Suppress the banner and status messages; runtime errors print | `false`        |
-| `--timeout`           | Network request timeout, in seconds, for each Google API call | `5`            |
+| Argument/Flag         | Description                                                   | Default                              |
+| --------------------- | ------------------------------------------------------------- | ------------------------------------ |
+| `--key-file-path`     | Path to the Google service account JSON key file              | `gleneseo-helpers/job-postings.json` |
+| `--folder-name`       | The Google Drive folder that contains the sheet file          | `Claude`                             |
+| `--file-name`         | The sheet file name                                           | `Job Postings`                       |
+| `--sheet-index`, `-i` | The 0-based index of the target sheet                         | `0`                                  |
+| `--quiet`, `-q`       | Suppress the banner and status messages; runtime errors print | `false`                              |
+| `--timeout`           | Network request timeout, in seconds, for each Google API call | `5`                                  |
 
 For example, to read the second sheet of a file named `Applications` in a folder named `2026 Search`, and redirect the CSV to `applications.csv`:
 
