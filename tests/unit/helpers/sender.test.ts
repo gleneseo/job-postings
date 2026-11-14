@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { Schema } from "effect";
 
-import Sender from "../../src/helpers/sender.js";
+import Sender from "../../../src/helpers/sender.js";
 
 const isSender = Schema.is(Sender);
 

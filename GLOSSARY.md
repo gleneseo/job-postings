@@ -18,6 +18,14 @@ _Avoid_: Credentials, API key
 The JSON file holding the OAuth2 credentials that let the `gmail` Helper act as the application when accessing the user's Gmail. It is not a Service account key file. It is either given explicitly or, by default, found in the Config directory as `gmail.json`.
 _Avoid_: Access file, key file, service account key
 
+**OAuth token**:
+The cached result of the user consenting, in the browser, to let the `gmail` Helper read their mailbox, so later runs don't ask again. It is either given explicitly or, by default, kept in the Config directory as `gmail-token.json`.
+_Avoid_: Credentials, access token file
+
+**Email database**:
+The SQLite file where the `gmail` Helper stores the emails it downloads, so later runs only fetch new messages. It is either given explicitly or, by default, kept in the Config directory as `gmail.sqlite`.
+_Avoid_: Cache, inbox
+
 **Config directory**:
 The `gleneseo-helpers` directory, under the user's configuration home, where Helpers keep their configuration files. It is shared by all Helpers.
 _Avoid_: Settings folder, config folder
