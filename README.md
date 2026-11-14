@@ -46,7 +46,7 @@ Unlike `job-postings`, the `gmail` subcommand needs an OAuth client rather than 
 2. Open **APIs & Services → OAuth consent screen** (or **Google Auth Platform**), click **Get started**, and choose **External** as the audience (**Internal** only for a Google Workspace mailbox that belongs to your organization).
 3. Under **Audience**, add the Gmail address you will download from as a **test user**. While the app is in "Testing" status, only test users can authorize it.
 4. Open **APIs & Services → Credentials → Create credentials → OAuth client ID**, choose the **Desktop app** application type, and download the JSON file.
-5. Save it where `gmail` looks for it by default, or pass its path with `--credentials-file-path`:
+5. Save it where `gmail` looks for it by default, or pass its path with `--credentials`:
 
 ```sh
 mkdir -p "${XDG_CONFIG_HOME:-$HOME/.config}/gleneseo-helpers"
@@ -69,7 +69,7 @@ npm start -- job-postings
 
 An ASCII banner prints before the command runs, but only on an interactive terminal (stdout is a TTY) — it's skipped when output is piped, redirected, or otherwise non-interactive, so it doesn't clutter scripted or CI runs. Passing `--quiet` also suppresses it. Every subcommand, and the bare `gleneseo-helpers` root command (which accepts its own `--quiet`/`-q`), prints the same banner; the `help` subcommand always shows it on a TTY.
 
-**Key file lookup.** If `--key-file-path` is given, that file is used and the command fails if it does not exist. Otherwise the command looks in the well-known location `gleneseo-helpers/job-postings.json` under `$XDG_CONFIG_HOME`, falling back to `~/.config` when `XDG_CONFIG_HOME` is unset, empty, or not an absolute path, and fails if no file exists there. Only regular files count. The `gleneseo-helpers` directory is shared by the other subcommands for their own configuration; `gmail` looks for its OAuth2 credentials file the same way, with `--credentials-file-path` and `gleneseo-helpers/gmail.json`.
+**Key file lookup.** If `--key-file-path` is given, that file is used and the command fails if it does not exist. Otherwise the command looks in the well-known location `gleneseo-helpers/job-postings.json` under `$XDG_CONFIG_HOME`, falling back to `~/.config` when `XDG_CONFIG_HOME` is unset, empty, or not an absolute path, and fails if no file exists there. Only regular files count. The `gleneseo-helpers` directory is shared by the other subcommands for their own configuration; `gmail` looks for its OAuth2 credentials file the same way, with `--credentials` and `gleneseo-helpers/gmail.json`.
 
 Progress messages are logged to standard error, keeping standard out free for the CSV data.
 
@@ -110,16 +110,16 @@ npm start -- gmail [flags]
 
 The subcommand is read-only: it requests only the `gmail.readonly` scope and never modifies or deletes your mail. Progress messages are logged to standard error, keeping standard out free for the table.
 
-**File lookup.** The OAuth2 credentials file is found like the `job-postings` key file: `--credentials-file-path` if given, otherwise `gleneseo-helpers/gmail.json` in the Config directory, failing if no regular file exists there. The OAuth token and the SQLite database default to `gleneseo-helpers/gmail-token.json` and `gleneseo-helpers/gmail.sqlite` in the same directory, and are created on the first run.
+**File lookup.** The OAuth2 credentials file is found like the `job-postings` key file: `--credentials` if given, otherwise `gleneseo-helpers/gmail.json` in the Config directory, failing if no regular file exists there. The OAuth token and the SQLite database default to `gleneseo-helpers/gmail-token.json` and `gleneseo-helpers/gmail.sqlite` in the same directory, and are created on the first run.
 
-| Flag                      | Description                                                                                                                                                                      | Default                                      |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `--sender`, `-s`          | An email address or domain to search for (`from:` in Gmail). Repeat it for several senders; an email from any of them matches. Without it, every inbox email is downloaded.      | —                                            |
-| `--credentials-file-path` | Path to the OAuth2 credentials JSON file                                                                                                                                         | `gleneseo-helpers/gmail.json`                |
-| `--database`, `-d`        | The SQLite file to write emails to                                                                                                                                               | `gleneseo-helpers/gmail.sqlite`              |
-| `--token`, `-t`           | Where to cache the OAuth token                                                                                                                                                   | `gleneseo-helpers/gmail-token.json`          |
-| `--output[=dir]`          | Also save each email as `<subject>.txt` (`.html` if it has only an HTML body) directly in `dir`, including emails already in the database. The directory must be given with `=`. | off; `output` when the flag has no directory |
-| `--quiet`, `-q`           | Suppress the banner and status messages; runtime errors print                                                                                                                    | `false`                                      |
+| Flag               | Description                                                                                                                                                                      | Default                                      |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
+| `--sender`, `-s`   | An email address or domain to search for (`from:` in Gmail). Repeat it for several senders; an email from any of them matches. Without it, every inbox email is downloaded.      | —                                            |
+| `--credentials`    | Path to the OAuth2 credentials JSON file                                                                                                                                         | `gleneseo-helpers/gmail.json`                |
+| `--database`, `-d` | The SQLite file to write emails to                                                                                                                                               | `gleneseo-helpers/gmail.sqlite`              |
+| `--token`, `-t`    | Where to cache the OAuth token                                                                                                                                                   | `gleneseo-helpers/gmail-token.json`          |
+| `--output[=dir]`   | Also save each email as `<subject>.txt` (`.html` if it has only an HTML body) directly in `dir`, including emails already in the database. The directory must be given with `=`. | off; `output` when the flag has no directory |
+| `--quiet`, `-q`    | Suppress the banner and status messages; runtime errors print                                                                                                                    | `false`                                      |
 
 For example:
 

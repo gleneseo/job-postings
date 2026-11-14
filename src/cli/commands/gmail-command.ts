@@ -12,7 +12,7 @@ const senders = Flag.String("sender").pipe(
   ),
 );
 
-const credentialsFilePath = Flag.File("credentials-file-path").pipe(
+const credentials = Flag.File("credentials").pipe(
   Flag.withSchema(FilePath),
   Flag.optional,
   Flag.withDescription(
@@ -57,16 +57,9 @@ const quiet = Flag.Boolean("quiet").pipe(
 
 const gmailCommand = Command.make(
   "gmail",
-  { senders, credentialsFilePath, database, token, output, quiet },
-  ({ senders, credentialsFilePath, database, token, output, quiet }) =>
-    handleGmailCommand(
-      senders,
-      credentialsFilePath,
-      database,
-      token,
-      output,
-      quiet,
-    ),
+  { senders, credentials, database, token, output, quiet },
+  ({ senders, credentials, database, token, output, quiet }) =>
+    handleGmailCommand(senders, credentials, database, token, output, quiet),
 ).pipe(
   Command.withDescription(
     "Download inbox emails from the given senders into SQLite and print them as a table",

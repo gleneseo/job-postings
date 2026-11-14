@@ -41,8 +41,8 @@ type GmailError =
  *
  * @param senders - Email addresses or domains to search for; empty to match
  * every inbox email
- * @param credentialsFilePath - Path to the OAuth2 credentials JSON file, if
- * given; otherwise the well-known location is used
+ * @param credentials - Path to the OAuth2 credentials JSON file, if given;
+ * otherwise the well-known location is used
  * @param database - Path of the SQLite database of downloaded emails, if given;
  * otherwise `gmail.sqlite` in the Config directory is used
  * @param token - Path of the cached OAuth token, if given; otherwise
@@ -56,7 +56,7 @@ type GmailError =
  */
 const handleGmailCommand: (
   senders: readonly (typeof Sender.Type)[],
-  credentialsFilePath: Option.Option<typeof FilePath.Type>,
+  credentials: Option.Option<typeof FilePath.Type>,
   database: Option.Option<typeof FilePath.Type>,
   token: Option.Option<typeof FilePath.Type>,
   output: Option.Option<typeof FilePath.Type>,
@@ -71,7 +71,7 @@ const handleGmailCommand: (
   | GmailTools
   | Path.Path
 > = Effect.fn("gmail-command")(
-  function* (senders, credentialsFilePath, database, token, output, quiet) {
+  function* (senders, credentials, database, token, output, quiet) {
     const configFileLocator = yield* ConfigFileLocator;
     const credentialsFileResolver = yield* CredentialsFileResolver;
     const gmailTools = yield* GmailTools;
@@ -82,8 +82,7 @@ const handleGmailCommand: (
 
     yield* printBanner(quiet);
 
-    const credentialsFile =
-      yield* credentialsFileResolver.resolve(credentialsFilePath);
+    const credentialsFile = yield* credentialsFileResolver.resolve(credentials);
     const databaseFile = yield* configFileLocator.locate(
       database,
       "gmail.sqlite",
