@@ -1,4 +1,5 @@
 import { Runtime, Schema } from "effect";
+import TabIndex from "../helpers/tab-index.js";
 
 /**
  * Raised when fetching the values of a tab fails, wrapping the
@@ -8,7 +9,7 @@ class TabValuesFetchError extends Schema.TaggedError<TabValuesFetchError>()(
   "TabValuesFetchError",
   {
     /** The index of the tab whose values failed to fetch */
-    tabIndex: Schema.Natural,
+    tabIndex: TabIndex,
     /** The underlying error that caused the fetch to fail */
     cause: Schema.Defect(),
   },

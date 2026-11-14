@@ -1,4 +1,5 @@
 import { Runtime, Schema } from "effect";
+import TabIndex from "../helpers/tab-index.js";
 
 /**
  * Raised when a requested tab index is outside the range of available
@@ -8,7 +9,7 @@ class InvalidTabIndexError extends Schema.TaggedError<InvalidTabIndexError>()(
   "InvalidTabIndexError",
   {
     /** The tab index that was requested */
-    indexRequested: Schema.Natural,
+    indexRequested: TabIndex,
     /** The total number of available tabs */
     totalCount: Schema.Natural,
   },

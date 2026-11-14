@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import TabValuesFetchError from "../../../src/google/tab-values-fetch-error.js";
+import TabIndex from "../../../src/helpers/tab-index.js";
 
 describe("TabValuesFetchError", () => {
   it("should tag itself as TabValuesFetchError", () => {
     const error = new TabValuesFetchError({
-      tabIndex: 0,
+      tabIndex: TabIndex.make(0),
       cause: new Error("network down"),
     });
 
@@ -13,14 +14,17 @@ describe("TabValuesFetchError", () => {
 
   it("should expose the underlying cause", () => {
     const cause = new Error("network down");
-    const error = new TabValuesFetchError({ tabIndex: 0, cause });
+    const error = new TabValuesFetchError({
+      tabIndex: TabIndex.make(0),
+      cause,
+    });
 
     expect(error.cause).toBe(cause);
   });
 
   it("should expose the tab index whose values failed to fetch", () => {
     const error = new TabValuesFetchError({
-      tabIndex: 3,
+      tabIndex: TabIndex.make(3),
       cause: new Error("network down"),
     });
 
@@ -29,7 +33,7 @@ describe("TabValuesFetchError", () => {
 
   it("should format a message including the tab index", () => {
     const error = new TabValuesFetchError({
-      tabIndex: 3,
+      tabIndex: TabIndex.make(3),
       cause: new Error("network down"),
     });
 

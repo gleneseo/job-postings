@@ -1,4 +1,5 @@
 import { Runtime, Schema } from "effect";
+import TabIndex from "../helpers/tab-index.js";
 
 /**
  * Raised when a tab was found and fetched successfully but contains no
@@ -8,7 +9,7 @@ class NoTabDataError extends Schema.TaggedError<NoTabDataError>()(
   "NoTabDataError",
   {
     /** The index of the tab with no rows */
-    tabIndex: Schema.Natural,
+    tabIndex: TabIndex,
   },
 ) {
   override get message() {

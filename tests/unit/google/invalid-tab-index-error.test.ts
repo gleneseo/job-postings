@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import InvalidTabIndexError from "../../../src/google/invalid-tab-index-error.js";
+import TabIndex from "../../../src/helpers/tab-index.js";
 
 describe("InvalidTabIndexError", () => {
   it("should tag itself as InvalidTabIndexError", () => {
     const error = new InvalidTabIndexError({
-      indexRequested: 2,
+      indexRequested: TabIndex.make(2),
       totalCount: 1,
     });
 
@@ -13,7 +14,7 @@ describe("InvalidTabIndexError", () => {
 
   it("should expose the tab index that was requested", () => {
     const error = new InvalidTabIndexError({
-      indexRequested: 2,
+      indexRequested: TabIndex.make(2),
       totalCount: 1,
     });
 
@@ -22,7 +23,7 @@ describe("InvalidTabIndexError", () => {
 
   it("should expose the total number of available tabs", () => {
     const error = new InvalidTabIndexError({
-      indexRequested: 2,
+      indexRequested: TabIndex.make(2),
       totalCount: 1,
     });
 
@@ -31,7 +32,7 @@ describe("InvalidTabIndexError", () => {
 
   it("should format a message including the requested index and total count", () => {
     const error = new InvalidTabIndexError({
-      indexRequested: 2,
+      indexRequested: TabIndex.make(2),
       totalCount: 1,
     });
 
