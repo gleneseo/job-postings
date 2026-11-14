@@ -93,7 +93,6 @@ const handleGmailCommand: (
     );
 
     const query = buildGmailQuery(senders);
-    const savedIds = yield* emailStore.getSavedIds(databaseFile.path);
 
     yield* logStatus(
       `Authorizing with OAuth2 credentials file [${credentialsFile.path}] (${credentialsFile.source}).`,
@@ -102,6 +101,7 @@ const handleGmailCommand: (
       credentialsFile.path,
       tokenFile.path,
     );
+    const savedIds = yield* emailStore.getSavedIds(databaseFile.path);
 
     yield* logStatus(`Searching Gmail for [${query}].`);
     const ids = yield* gmailTools.listMessageIds(auth, query);
