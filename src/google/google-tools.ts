@@ -5,16 +5,16 @@ import FolderName from "../helpers/folder-name.js";
 import FileName from "../helpers/file-name.js";
 import FolderId from "../helpers/folder-id.js";
 import FileId from "../helpers/file-id.js";
-import SheetIndex from "../helpers/sheet-index.js";
+import TabIndex from "../helpers/tab-index.js";
 import FolderSearchError from "./folder-search-error.js";
 import DuplicateFoldersFoundError from "./duplicate-folders-found-error.js";
 import FolderNotFoundError from "./folder-not-found-error.js";
 import FileSearchError from "./file-search-error.js";
 import DuplicateFilesFoundError from "./duplicate-files-found-error.js";
 import FileNotFoundError from "./file-not-found-error.js";
-import SheetFetchError from "./sheet-fetch-error.js";
-import InvalidSheetIndexError from "./invalid-sheet-index-error.js";
-import SheetValuesFetchError from "./sheet-values-fetch-error.js";
+import TabsFetchError from "./tabs-fetch-error.js";
+import InvalidTabIndexError from "./invalid-tab-index-error.js";
+import TabValuesFetchError from "./tab-values-fetch-error.js";
 
 /**
  * A collection of tools from Google
@@ -106,25 +106,25 @@ class GoogleTools extends Context.Service<
     >;
 
     /**
-     * Retrieves the values of a single sheet from a Google Sheets
+     * Retrieves the values of a single tab from a Google Sheets
      * spreadsheet by its index
      *
      * @param auth - Authenticated Google auth client with Sheets access
      * @param fileId - ID of the spreadsheet file
-     * @param sheetIndex - Zero-based index of the sheet to retrieve
+     * @param tabIndex - Zero-based index of the tab to retrieve
      * @param timeout - Maximum time to wait for each fetch request
-     * @returns An Effect that resolves to the sheet's values as rows of
-     * cells, or fails if either fetch errors or the sheet index is out of
+     * @returns An Effect that resolves to the tab's values as rows of
+     * cells, or fails if either fetch errors or the tab index is out of
      * range
      */
-    readonly getSheetValues: (
+    readonly getTabValues: (
       auth: Auth.GoogleAuth,
       fileId: typeof FileId.Type,
-      sheetIndex: typeof SheetIndex.Type,
+      tabIndex: typeof TabIndex.Type,
       timeout: Duration.Duration,
     ) => Effect.Effect<
       string[][],
-      SheetFetchError | InvalidSheetIndexError | SheetValuesFetchError
+      TabsFetchError | InvalidTabIndexError | TabValuesFetchError
     >;
   }
 >()("@app/GoogleTools") {
@@ -245,71 +245,69 @@ class GoogleTools extends Context.Service<
       );
     });
 
-    const getSheetValues = Effect.fn("google-tools.get-sheet-values")(
-      function* (
-        auth: Auth.GoogleAuth,
-        fileId: typeof FileId.Type,
-        sheetIndex: typeof SheetIndex.Type,
-        timeout: Duration.Duration,
-      ) {
-        const sheets = google.sheets({ version: "v4", auth });
+    const getTabValues = Effect.fn("google-tools.get-tab-values")(function* (
+      auth: Auth.GoogleAuth,
+      fileId: typeof FileId.Type,
+      tabIndex: typeof TabIndex.Type,
+      timeout: Duration.Duration,
+    ) {
+      const sheets = google.sheets({ version: "v4", auth });
 
-        const availableSheets = yield* Effect.tryPromise({
-          try: async () =>
-            sheets.spreadsheets
-              .get({ spreadsheetId: fileId })
-              .then((x) => x.data.sheets ?? []),
-          catch: (e) => new SheetFetchError({ cause: e }),
-        }).pipe(
-          Effect.timeoutOrElse({
-            duration: timeout,
-            orElse: () =>
-              Effect.fail(
-                new SheetFetchError({
-                  cause: new Cause.TimeoutError(
-                    `Sheet fetch timed out after ${Duration.format(timeout)}`,
-                  ),
-                }),
-              ),
-          }),
-        );
-
-        const targetSheet = yield* Array.get(availableSheets, sheetIndex).pipe(
-          Option.match({
-            onNone: () =>
-              new InvalidSheetIndexError({
-                indexRequested: sheetIndex,
-                totalCount: availableSheets.length,
+      const availableTabs = yield* Effect.tryPromise({
+        try: async () =>
+          sheets.spreadsheets
+            .get({ spreadsheetId: fileId })
+            .then((x) => x.data.sheets ?? []),
+        catch: (e) => new TabsFetchError({ cause: e }),
+      }).pipe(
+        Effect.timeoutOrElse({
+          duration: timeout,
+          orElse: () =>
+            Effect.fail(
+              new TabsFetchError({
+                cause: new Cause.TimeoutError(
+                  `Tabs fetch timed out after ${Duration.format(timeout)}`,
+                ),
               }),
-            onSome: (x) => Effect.succeed(x),
-          }),
-        );
+            ),
+        }),
+      );
 
-        return yield* Effect.tryPromise({
-          try: async () =>
-            sheets.spreadsheets.values
-              .get({
-                spreadsheetId: fileId,
-                range: targetSheet.properties?.title ?? "Sheet1",
-              })
-              .then((x) => x.data.values ?? []),
-          catch: (e) => new SheetValuesFetchError({ sheetIndex, cause: e }),
-        }).pipe(
-          Effect.timeoutOrElse({
-            duration: timeout,
-            orElse: () =>
-              Effect.fail(
-                new SheetValuesFetchError({
-                  sheetIndex,
-                  cause: new Cause.TimeoutError(
-                    `Sheet values fetch timed out after ${Duration.format(timeout)}`,
-                  ),
-                }),
-              ),
-          }),
-        );
-      },
-    );
+      const targetTab = yield* Array.get(availableTabs, tabIndex).pipe(
+        Option.match({
+          onNone: () =>
+            new InvalidTabIndexError({
+              indexRequested: tabIndex,
+              totalCount: availableTabs.length,
+            }),
+          onSome: (x) => Effect.succeed(x),
+        }),
+      );
+
+      return yield* Effect.tryPromise({
+        try: async () =>
+          sheets.spreadsheets.values
+            .get({
+              spreadsheetId: fileId,
+              range: targetTab.properties?.title ?? "Sheet1",
+            })
+            .then((x) => x.data.values ?? []),
+        catch: (e) => new TabValuesFetchError({ tabIndex, cause: e }),
+      }).pipe(
+        Effect.timeoutOrElse({
+          duration: timeout,
+          orElse: () =>
+            Effect.fail(
+              new TabValuesFetchError({
+                tabIndex,
+                cause: new Cause.TimeoutError(
+                  `Tab values fetch timed out after ${Duration.format(timeout)}`,
+                ),
+              }),
+            ),
+        }),
+      );
+    });
 
     return GoogleTools.of({
       getAuth,
@@ -317,7 +315,7 @@ class GoogleTools extends Context.Service<
       getFolder,
       getFiles,
       getFile,
-      getSheetValues,
+      getTabValues,
     });
   });
 }

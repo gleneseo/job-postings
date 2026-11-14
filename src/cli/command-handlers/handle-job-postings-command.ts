@@ -8,7 +8,7 @@ import FilePath from "../../helpers/file-path.js";
 import FolderName from "../../helpers/folder-name.js";
 import FileName from "../../helpers/file-name.js";
 import FolderId from "../../helpers/folder-id.js";
-import SheetIndex from "../../helpers/sheet-index.js";
+import TabIndex from "../../helpers/tab-index.js";
 import TimeoutSeconds from "../../helpers/timeout-seconds.js";
 import MissingFileIdError from "../../google/missing-file-id-error.js";
 import FileId from "../../helpers/file-id.js";
@@ -20,10 +20,10 @@ import FileNotFoundError from "../../google/file-not-found-error.js";
 import FileSearchError from "../../google/file-search-error.js";
 import FolderNotFoundError from "../../google/folder-not-found-error.js";
 import FolderSearchError from "../../google/folder-search-error.js";
-import InvalidSheetIndexError from "../../google/invalid-sheet-index-error.js";
-import NoSheetDataError from "../../google/no-sheet-data-error.js";
-import SheetFetchError from "../../google/sheet-fetch-error.js";
-import SheetValuesFetchError from "../../google/sheet-values-fetch-error.js";
+import InvalidTabIndexError from "../../google/invalid-tab-index-error.js";
+import NoTabDataError from "../../google/no-tab-data-error.js";
+import TabsFetchError from "../../google/tabs-fetch-error.js";
+import TabValuesFetchError from "../../google/tab-values-fetch-error.js";
 
 /**
  * The domain errors that can end a {@link handleJobPostingsCommand} run. Each
@@ -37,26 +37,27 @@ type JobPostingsError =
   | FileSearchError
   | FolderNotFoundError
   | FolderSearchError
-  | InvalidSheetIndexError
+  | InvalidTabIndexError
   | KeyFileNotFoundError
   | MissingFileIdError
   | MissingFolderIdError
-  | NoSheetDataError
-  | SheetFetchError
-  | SheetValuesFetchError;
+  | NoTabDataError
+  | TabsFetchError
+  | TabValuesFetchError;
 
 /**
- * Resolves the key file, authenticates with Google using it, locates the target
- * sheet by folder and file name, sorts its values, and prints them to
- * standard out as CSV, logging progress to standard error along the way
- * and, for a domain error, a human-readable message before failing with it
+ * Resolves the key file, authenticates with Google using it, locates the Job
+ * Postings sheet by folder and file name, reads the given tab, sorts its
+ * values, and prints them to standard out as CSV, logging progress to
+ * standard error along the way and, for a domain error, a human-readable
+ * message before failing with it
  *
  * @param key - Path to the Google service account JSON key file, if
  * given; otherwise the well-known location is used
- * @param folderName - Name of the Google Drive folder containing the sheet
- * file
- * @param fileName - Name of the sheet file to read
- * @param sheetIndex - Zero-based index of the sheet to read
+ * @param folderName - Name of the Google Drive folder containing the Job
+ * Postings sheet
+ * @param fileName - File name of the Job Postings sheet
+ * @param tabIndex - Zero-based index of the tab to read
  * @param quiet - When true, suppresses the banner and status messages;
  * runtime errors are still printed
  * @param timeoutSeconds - Network request timeout, in seconds, for each
@@ -68,14 +69,14 @@ const handleJobPostingsCommand: (
   key: Option.Option<typeof FilePath.Type>,
   folderName: typeof FolderName.Type,
   fileName: typeof FileName.Type,
-  sheetIndex: typeof SheetIndex.Type,
+  tabIndex: typeof TabIndex.Type,
   quiet: boolean,
   timeoutSeconds: typeof TimeoutSeconds.Type,
 ) => Effect.Effect<void, JobPostingsError, GoogleTools | KeyFileResolver> = (
   key,
   folderName,
   fileName,
-  sheetIndex,
+  tabIndex,
   quiet,
   timeoutSeconds,
 ) =>
@@ -118,17 +119,17 @@ const handleJobPostingsCommand: (
     }
 
     yield* logStatus(
-      `Fetching values for sheet at index [${sheetIndex.toString()}] in file [${fileName}].`,
+      `Fetching values for tab at index [${tabIndex.toString()}] in file [${fileName}].`,
     );
-    const values = yield* googleTools.getSheetValues(
+    const values = yield* googleTools.getTabValues(
       auth,
       FileId.make(file.id),
-      sheetIndex,
+      tabIndex,
       timeout,
     );
 
     if (!values.length) {
-      return yield* new NoSheetDataError({ sheetIndex });
+      return yield* new NoTabDataError({ tabIndex });
     }
 
     yield* Console.error(`Sorting values from [${fileName}].`);
@@ -166,9 +167,9 @@ const handleJobPostingsCommand: (
         Console.error(
           `❌ Error while searching for folder [${folderName}]. Please check your setup and try again.`,
         ).pipe(Effect.andThen(() => Effect.fail(e))),
-      InvalidSheetIndexError: (e) =>
+      InvalidTabIndexError: (e) =>
         Console.error(
-          `❌ Sheet index [${e.indexRequested.toString()}] is invalid for file [${fileName}]. Only [${e.totalCount.toString()}] sheet(s) available.`,
+          `❌ Tab index [${e.indexRequested.toString()}] is invalid for file [${fileName}]. Only [${e.totalCount.toString()}] tab(s) available.`,
         ).pipe(Effect.andThen(() => Effect.fail(e))),
       KeyFileNotFoundError: (e) =>
         Console.error(
@@ -182,17 +183,17 @@ const handleJobPostingsCommand: (
         Console.error(
           `❌ Folder [${folderName}] is missing an ID. Please check your Google Drive setup and try again.`,
         ).pipe(Effect.andThen(() => Effect.fail(e))),
-      NoSheetDataError: (e) =>
+      NoTabDataError: (e) =>
         Console.error(
-          `❌ Sheet at index [${e.sheetIndex.toString()}] in file [${fileName}] does not contain any rows. Add rows to the sheet and try again.`,
+          `❌ Tab at index [${e.tabIndex.toString()}] in file [${fileName}] does not contain any rows. Add rows to the tab and try again.`,
         ).pipe(Effect.andThen(() => Effect.fail(e))),
-      SheetFetchError: (e) =>
+      TabsFetchError: (e) =>
         Console.error(
-          `❌ Error while fetching sheets for file [${fileName}]. Please check your setup and try again.`,
+          `❌ Error while fetching tabs for file [${fileName}]. Please check your setup and try again.`,
         ).pipe(Effect.andThen(() => Effect.fail(e))),
-      SheetValuesFetchError: (e) =>
+      TabValuesFetchError: (e) =>
         Console.error(
-          `❌ Error while fetching values for sheet [${e.sheetIndex.toString()}] in file [${fileName}]. Please check your setup and try again.`,
+          `❌ Error while fetching values for tab [${e.tabIndex.toString()}] in file [${fileName}]. Please check your setup and try again.`,
         ).pipe(Effect.andThen(() => Effect.fail(e))),
     }),
   );

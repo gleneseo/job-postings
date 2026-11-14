@@ -34,7 +34,7 @@ The `job-postings` subcommand authenticates as a Google Cloud service account, s
 2. Enable the [Google Drive API](https://console.cloud.google.com/apis/library/drive.googleapis.com) and the [Google Sheets API](https://console.cloud.google.com/apis/library/sheets.googleapis.com) for that project.
 3. Go to **IAM & Admin → Service Accounts** and click **Create Service Account**. Give it a name; no project roles are required since access is granted at the Drive folder level (see step 5).
 4. Open the new service account, go to the **Keys** tab, click **Add Key → Create new key**, choose **JSON**, and download it. Store this file somewhere safe outside version control — it grants access to anything shared with the service account.
-5. Copy the service account's email address (looks like `<name>@<project-id>.iam.gserviceaccount.com`, visible on the service account's details page). In Google Drive, share the folder containing the target sheet with that email address, granting at least **Viewer** access.
+5. Copy the service account's email address (looks like `<name>@<project-id>.iam.gserviceaccount.com`, visible on the service account's details page). In Google Drive, share the folder containing the Job Postings sheet with that email address, granting at least **Viewer** access.
 
 With that done, save the key file where `job-postings` looks for it by default, or pass its path with `--key` (see [Usage](#usage)).
 
@@ -61,7 +61,7 @@ If you used the standalone `gmail-downloader` application, move its `access.json
 
 ### `job-postings`
 
-Locates a Google Sheet in Drive by folder and file name, sorts its rows by `Last Contact` date (undated rows first, ties broken alphabetically by `Company`), and prints the result to standard out as CSV, so it can be redirected to a file or piped into another CLI. If the target sheet has no rows, the subcommand exits with `NoSheetDataError` (see [Exit codes](#exit-codes)) instead of printing a CSV.
+Locates a Google Sheet in Drive by folder and file name, sorts its rows by `Last Contact` date (undated rows first, ties broken alphabetically by `Company`), and prints the result to standard out as CSV, so it can be redirected to a file or piped into another CLI. If the target tab has no rows, the subcommand exits with `NoTabDataError` (see [Exit codes](#exit-codes)) instead of printing a CSV.
 
 ```sh
 npm start -- job-postings
@@ -73,19 +73,19 @@ An ASCII banner prints before the command runs, but only on an interactive termi
 
 Progress messages are logged to standard error, keeping standard out free for the CSV data.
 
-| Argument/Flag         | Description                                                   | Default                              |
-| --------------------- | ------------------------------------------------------------- | ------------------------------------ |
-| `--key`, `-k`         | Path to the Google service account JSON key file              | `gleneseo-helpers/job-postings.json` |
-| `--folder-name`       | The Google Drive folder that contains the sheet file          | `Claude`                             |
-| `--file-name`         | The sheet file name                                           | `Job Postings`                       |
-| `--sheet-index`, `-i` | The 0-based index of the target sheet                         | `0`                                  |
-| `--quiet`, `-q`       | Suppress the banner and status messages; runtime errors print | `false`                              |
-| `--timeout`           | Network request timeout, in seconds, for each Google API call | `5`                                  |
+| Argument/Flag   | Description                                                   | Default                              |
+| --------------- | ------------------------------------------------------------- | ------------------------------------ |
+| `--key`, `-k`   | Path to the Google service account JSON key file              | `gleneseo-helpers/job-postings.json` |
+| `--folder`      | The Google Drive folder that contains the Job Postings sheet  | `Claude`                             |
+| `--file`        | The file name of the Job Postings sheet                       | `Job Postings`                       |
+| `--tab`, `-t`   | The 0-based position of the tab to read                       | `0`                                  |
+| `--quiet`, `-q` | Suppress the banner and status messages; runtime errors print | `false`                              |
+| `--timeout`     | Network request timeout, in seconds, for each Google API call | `5`                                  |
 
-For example, to read the second sheet of a file named `Applications` in a folder named `2026 Search`, and redirect the CSV to `applications.csv`:
+For example, to read the second tab of a file named `Applications` in a folder named `2026 Search`, and redirect the CSV to `applications.csv`:
 
 ```sh
-npm start -- job-postings --key ./key.json --folder-name "2026 Search" --file-name Applications --sheet-index 1 > applications.csv
+npm start -- job-postings --key ./key.json --folder "2026 Search" --file Applications --tab 1 > applications.csv
 ```
 
 Or pipe it directly into another CLI application:
@@ -166,17 +166,17 @@ Each domain error a subcommand can fail with exits with its own code, so scripts
 | `0`       | —                              | Success.                                                           |
 | `1`       | —                              | Unexpected failure not covered by the codes below.                 |
 | `10`      | `FolderSearchError`            | The Drive folder search request failed.                            |
-| `11`      | `FolderNotFoundError`          | No folder matched `--folder-name`.                                 |
-| `12`      | `DuplicateFoldersFoundError`   | More than one folder matched `--folder-name`.                      |
+| `11`      | `FolderNotFoundError`          | No folder matched `--folder`.                                      |
+| `12`      | `DuplicateFoldersFoundError`   | More than one folder matched `--folder`.                           |
 | `13`      | `MissingFolderIdError`         | The matched folder is missing an ID.                               |
 | `20`      | `FileSearchError`              | The Drive file search request failed.                              |
-| `21`      | `FileNotFoundError`            | No file matched `--file-name` in the resolved folder.              |
-| `22`      | `DuplicateFilesFoundError`     | More than one file matched `--file-name`.                          |
+| `21`      | `FileNotFoundError`            | No file matched `--file` in the resolved folder.                   |
+| `22`      | `DuplicateFilesFoundError`     | More than one file matched `--file`.                               |
 | `23`      | `MissingFileIdError`           | The matched file is missing an ID.                                 |
-| `30`      | `SheetFetchError`              | Fetching the file's sheets failed.                                 |
-| `31`      | `InvalidSheetIndexError`       | `--sheet-index` is outside the range of available sheets.          |
-| `32`      | `SheetValuesFetchError`        | Fetching the target sheet's values failed.                         |
-| `33`      | `NoSheetDataError`             | The target sheet does not contain any rows.                        |
+| `30`      | `TabsFetchError`               | Fetching the file's tabs failed.                                   |
+| `31`      | `InvalidTabIndexError`         | `--tab` is outside the range of available tabs.                    |
+| `32`      | `TabValuesFetchError`          | Fetching the target tab's values failed.                           |
+| `33`      | `NoTabDataError`               | The target tab does not contain any rows.                          |
 | `40`      | `KeyFileNotFoundError`         | No key file exists at the given or well-known path.                |
 | `41`      | `CredentialsFileNotFoundError` | No OAuth2 credentials file exists at the given or well-known path. |
 | `42`      | `CredentialsReadError`         | The OAuth2 credentials file is not a valid OAuth client file.      |

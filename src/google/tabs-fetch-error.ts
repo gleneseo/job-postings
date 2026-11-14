@@ -1,11 +1,11 @@
 import { Runtime, Schema } from "effect";
 
 /**
- * Raised when a Google Sheets spreadsheet fetch request fails, wrapping the
- * underlying cause (e.g. a network or API error)
+ * Raised when fetching the tabs of a Google Sheets spreadsheet fails, wrapping
+ * the underlying cause (e.g. a network or API error)
  */
-class SheetFetchError extends Schema.TaggedError<SheetFetchError>()(
-  "SheetFetchError",
+class TabsFetchError extends Schema.TaggedError<TabsFetchError>()(
+  "TabsFetchError",
   {
     /** The underlying error that caused the fetch to fail */
     cause: Schema.Defect(),
@@ -18,4 +18,4 @@ class SheetFetchError extends Schema.TaggedError<SheetFetchError>()(
   override readonly [Runtime.errorReported] = false;
 }
 
-export default SheetFetchError;
+export default TabsFetchError;

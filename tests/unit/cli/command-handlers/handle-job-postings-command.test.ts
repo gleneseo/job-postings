@@ -11,10 +11,10 @@ import FileSearchError from "../../../../src/google/file-search-error.js";
 import FileNotFoundError from "../../../../src/google/file-not-found-error.js";
 import DuplicateFilesFoundError from "../../../../src/google/duplicate-files-found-error.js";
 import MissingFileIdError from "../../../../src/google/missing-file-id-error.js";
-import SheetFetchError from "../../../../src/google/sheet-fetch-error.js";
-import SheetValuesFetchError from "../../../../src/google/sheet-values-fetch-error.js";
-import InvalidSheetIndexError from "../../../../src/google/invalid-sheet-index-error.js";
-import NoSheetDataError from "../../../../src/google/no-sheet-data-error.js";
+import TabsFetchError from "../../../../src/google/tabs-fetch-error.js";
+import TabValuesFetchError from "../../../../src/google/tab-values-fetch-error.js";
+import InvalidTabIndexError from "../../../../src/google/invalid-tab-index-error.js";
+import NoTabDataError from "../../../../src/google/no-tab-data-error.js";
 import KeyFileResolver from "../../../../src/config/key-file-resolver.js";
 import KeyFileNotFoundError from "../../../../src/config/key-file-not-found-error.js";
 import GoogleTools from "../../../../src/google/google-tools.js";
@@ -23,14 +23,14 @@ import FolderName from "../../../../src/helpers/folder-name.js";
 import FileName from "../../../../src/helpers/file-name.js";
 import FolderId from "../../../../src/helpers/folder-id.js";
 import FileId from "../../../../src/helpers/file-id.js";
-import SheetIndex from "../../../../src/helpers/sheet-index.js";
+import TabIndex from "../../../../src/helpers/tab-index.js";
 import TimeoutSeconds from "../../../../src/helpers/timeout-seconds.js";
 
 const fakeAuth = {} as unknown as Auth.GoogleAuth;
 const key = FilePath.make("/tmp/key.json");
 const folderName = FolderName.make("reports");
 const fileName = FileName.make("Job Postings");
-const sheetIndex = SheetIndex.make(0);
+const tabIndex = TabIndex.make(0);
 const quiet = false;
 const timeoutSeconds = TimeoutSeconds.make(30);
 const timeout = Duration.seconds(timeoutSeconds);
@@ -41,8 +41,8 @@ const fakeCsv = "title,company";
 const msgAuthenticating = `Authenticating with key file [${key}] (flag).`;
 const msgSearchingForFolder = `Searching for folder [${folderName}].`;
 const msgSearchingForFile = `Searching for file [${fileName}] in folder [${folderName}].`;
-const msgFetchingSheetValues = (index: typeof SheetIndex.Type) =>
-  `Fetching values for sheet at index [${index.toString()}] in file [${fileName}].`;
+const msgFetchingTabValues = (index: typeof TabIndex.Type) =>
+  `Fetching values for tab at index [${index.toString()}] in file [${fileName}].`;
 const msgSorting = `Sorting values from [${fileName}].`;
 
 const makeGoogleToolsTestDouble = (overrides: {
@@ -64,21 +64,21 @@ const makeGoogleToolsTestDouble = (overrides: {
     drive_v3.Schema$File,
     FileSearchError | FileNotFoundError | DuplicateFilesFoundError
   >;
-  getSheetValues?: (
+  getTabValues?: (
     auth: Auth.GoogleAuth,
     fileId: typeof FileId.Type,
-    sheetIndex: typeof SheetIndex.Type,
+    tabIndex: typeof TabIndex.Type,
     timeout: Duration.Duration,
   ) => Effect.Effect<
     string[][],
-    SheetFetchError | InvalidSheetIndexError | SheetValuesFetchError
+    TabsFetchError | InvalidTabIndexError | TabValuesFetchError
   >;
 }) => ({
   getAuth: vi.fn(overrides.getAuth ?? (() => Effect.succeed(fakeAuth))),
   getFolder: vi.fn(overrides.getFolder ?? (() => Effect.succeed(fakeFolder))),
   getFile: vi.fn(overrides.getFile ?? (() => Effect.succeed(fakeFile))),
-  getSheetValues: vi.fn(
-    overrides.getSheetValues ?? (() => Effect.succeed(fakeValues)),
+  getTabValues: vi.fn(
+    overrides.getTabValues ?? (() => Effect.succeed(fakeValues)),
   ),
   getFolders: vi.fn(() => Effect.die("not implemented by this test double")),
   getFiles: vi.fn(() => Effect.die("not implemented by this test double")),
@@ -117,7 +117,7 @@ const provideTestDoubles = (
 
 describe("handleJobPostingsCommand", () => {
   it.effect(
-    "should authenticate, search for the folder and file, sort the sheet, and print the outcome as CSV to standard out",
+    "should authenticate, search for the folder and file, sort the tab, and print the outcome as CSV to standard out",
     () =>
       Effect.gen(function* () {
         const googleTools = makeGoogleToolsTestDouble({});
@@ -126,7 +126,7 @@ describe("handleJobPostingsCommand", () => {
           Option.some(key),
           folderName,
           fileName,
-          sheetIndex,
+          tabIndex,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools));
@@ -143,10 +143,10 @@ describe("handleJobPostingsCommand", () => {
           FolderId.make(fakeFolder.id ?? ""),
           timeout,
         );
-        expect(googleTools.getSheetValues).toHaveBeenCalledExactlyOnceWith(
+        expect(googleTools.getTabValues).toHaveBeenCalledExactlyOnceWith(
           fakeAuth,
           FileId.make(fakeFile.id ?? ""),
-          sheetIndex,
+          tabIndex,
           timeout,
         );
         assert.deepStrictEqual(yield* TestConsole.logLines, [fakeCsv]);
@@ -154,7 +154,7 @@ describe("handleJobPostingsCommand", () => {
           msgAuthenticating,
           msgSearchingForFolder,
           msgSearchingForFile,
-          msgFetchingSheetValues(sheetIndex),
+          msgFetchingTabValues(tabIndex),
           msgSorting,
           "Success.",
         ]);
@@ -174,7 +174,7 @@ describe("handleJobPostingsCommand", () => {
           Option.some(key),
           folderName,
           fileName,
-          sheetIndex,
+          tabIndex,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -205,7 +205,7 @@ describe("handleJobPostingsCommand", () => {
           Option.some(key),
           folderName,
           fileName,
-          sheetIndex,
+          tabIndex,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -233,7 +233,7 @@ describe("handleJobPostingsCommand", () => {
           Option.some(key),
           folderName,
           fileName,
-          sheetIndex,
+          tabIndex,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -264,7 +264,7 @@ describe("handleJobPostingsCommand", () => {
           Option.some(key),
           folderName,
           fileName,
-          sheetIndex,
+          tabIndex,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -295,7 +295,7 @@ describe("handleJobPostingsCommand", () => {
           Option.some(key),
           folderName,
           fileName,
-          sheetIndex,
+          tabIndex,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -324,7 +324,7 @@ describe("handleJobPostingsCommand", () => {
           Option.some(key),
           folderName,
           fileName,
-          sheetIndex,
+          tabIndex,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -356,7 +356,7 @@ describe("handleJobPostingsCommand", () => {
           Option.some(key),
           folderName,
           fileName,
-          sheetIndex,
+          tabIndex,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -386,7 +386,7 @@ describe("handleJobPostingsCommand", () => {
           Option.some(key),
           folderName,
           fileName,
-          sheetIndex,
+          tabIndex,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -403,51 +403,51 @@ describe("handleJobPostingsCommand", () => {
   );
 
   it.effect(
-    "should fail with a distinct exit code when the sheet has no data rows after logging it",
+    "should fail with a distinct exit code when the tab has no data rows after logging it",
     () =>
       Effect.gen(function* () {
         const googleTools = makeGoogleToolsTestDouble({
-          getSheetValues: () => Effect.succeed([]),
+          getTabValues: () => Effect.succeed([]),
         });
 
         const failure = yield* handleJobPostingsCommand(
           Option.some(key),
           folderName,
           fileName,
-          sheetIndex,
+          tabIndex,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
-        expect(failure).toStrictEqual(new NoSheetDataError({ sheetIndex }));
+        expect(failure).toStrictEqual(new NoTabDataError({ tabIndex }));
         expect(Runtime.getErrorExitCode(failure)).toBe(33);
         assert.deepStrictEqual(yield* TestConsole.errorLines, [
           msgAuthenticating,
           msgSearchingForFolder,
           msgSearchingForFile,
-          msgFetchingSheetValues(sheetIndex),
-          `❌ Sheet at index [${sheetIndex.toString()}] in file [${fileName}] does not contain any rows. Add rows to the sheet and try again.`,
+          msgFetchingTabValues(tabIndex),
+          `❌ Tab at index [${tabIndex.toString()}] in file [${fileName}] does not contain any rows. Add rows to the tab and try again.`,
         ]);
       }),
   );
 
   it.effect(
-    "should fail with a distinct exit code on an invalid sheet index after logging it",
+    "should fail with a distinct exit code on an invalid tab index after logging it",
     () =>
       Effect.gen(function* () {
-        const invalidSheetIndex = SheetIndex.make(1);
-        const error = new InvalidSheetIndexError({
-          indexRequested: invalidSheetIndex,
+        const invalidTabIndex = TabIndex.make(1);
+        const error = new InvalidTabIndexError({
+          indexRequested: invalidTabIndex,
           totalCount: 1,
         });
         const googleTools = makeGoogleToolsTestDouble({
-          getSheetValues: () => Effect.fail(error),
+          getTabValues: () => Effect.fail(error),
         });
 
         const failure = yield* handleJobPostingsCommand(
           Option.some(key),
           folderName,
           fileName,
-          invalidSheetIndex,
+          invalidTabIndex,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -458,28 +458,28 @@ describe("handleJobPostingsCommand", () => {
           msgAuthenticating,
           msgSearchingForFolder,
           msgSearchingForFile,
-          msgFetchingSheetValues(invalidSheetIndex),
-          `❌ Sheet index [${invalidSheetIndex.toString()}] is invalid for file [${fileName}]. Only [1] sheet(s) available.`,
+          msgFetchingTabValues(invalidTabIndex),
+          `❌ Tab index [${invalidTabIndex.toString()}] is invalid for file [${fileName}]. Only [1] tab(s) available.`,
         ]);
       }),
   );
 
   it.effect(
-    "should fail with a distinct exit code on a sheet fetch failure after logging it",
+    "should fail with a distinct exit code on a tabs fetch failure after logging it",
     () =>
       Effect.gen(function* () {
-        const error = new SheetFetchError({
+        const error = new TabsFetchError({
           cause: new Error("network down"),
         });
         const googleTools = makeGoogleToolsTestDouble({
-          getSheetValues: () => Effect.fail(error),
+          getTabValues: () => Effect.fail(error),
         });
 
         const failure = yield* handleJobPostingsCommand(
           Option.some(key),
           folderName,
           fileName,
-          sheetIndex,
+          tabIndex,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -490,29 +490,29 @@ describe("handleJobPostingsCommand", () => {
           msgAuthenticating,
           msgSearchingForFolder,
           msgSearchingForFile,
-          msgFetchingSheetValues(sheetIndex),
-          `❌ Error while fetching sheets for file [${fileName}]. Please check your setup and try again.`,
+          msgFetchingTabValues(tabIndex),
+          `❌ Error while fetching tabs for file [${fileName}]. Please check your setup and try again.`,
         ]);
       }),
   );
 
   it.effect(
-    "should fail with a distinct exit code on a sheet values fetch failure after logging it",
+    "should fail with a distinct exit code on a tab values fetch failure after logging it",
     () =>
       Effect.gen(function* () {
-        const error = new SheetValuesFetchError({
-          sheetIndex,
+        const error = new TabValuesFetchError({
+          tabIndex,
           cause: new Error("network down"),
         });
         const googleTools = makeGoogleToolsTestDouble({
-          getSheetValues: () => Effect.fail(error),
+          getTabValues: () => Effect.fail(error),
         });
 
         const failure = yield* handleJobPostingsCommand(
           Option.some(key),
           folderName,
           fileName,
-          sheetIndex,
+          tabIndex,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools), Effect.flip);
@@ -523,8 +523,8 @@ describe("handleJobPostingsCommand", () => {
           msgAuthenticating,
           msgSearchingForFolder,
           msgSearchingForFile,
-          msgFetchingSheetValues(sheetIndex),
-          `❌ Error while fetching values for sheet [${sheetIndex.toString()}] in file [${fileName}]. Please check your setup and try again.`,
+          msgFetchingTabValues(tabIndex),
+          `❌ Error while fetching values for tab [${tabIndex.toString()}] in file [${fileName}]. Please check your setup and try again.`,
         ]);
       }),
   );
@@ -537,7 +537,7 @@ describe("handleJobPostingsCommand", () => {
         Option.some(key),
         folderName,
         fileName,
-        sheetIndex,
+        tabIndex,
         true,
         timeoutSeconds,
       ).pipe(provideTestDoubles(googleTools));
@@ -563,7 +563,7 @@ describe("handleJobPostingsCommand", () => {
           Option.none(),
           folderName,
           fileName,
-          sheetIndex,
+          tabIndex,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools, keyFileResolver));
@@ -596,7 +596,7 @@ describe("handleJobPostingsCommand", () => {
           Option.some(key),
           folderName,
           fileName,
-          sheetIndex,
+          tabIndex,
           quiet,
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools, keyFileResolver), Effect.flip);
