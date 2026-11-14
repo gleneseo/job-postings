@@ -3,7 +3,7 @@
  * date first and breaking ties (including between two undated rows)
  * alphabetically by Company
  *
- * @param dataRows - Rows of sheet data to sort
+ * @param dataRows - Rows of tab data to sort
  * @param headers - Column headers used to locate the Last Contact and
  * Company columns
  * @returns A new array of rows sorted by Last Contact date

@@ -1,18 +1,18 @@
 import { Runtime, Schema } from "effect";
 
 /**
- * Raised when a sheet was found and fetched successfully but contains no
+ * Raised when a tab was found and fetched successfully but contains no
  * rows
  */
-class NoSheetDataError extends Schema.TaggedError<NoSheetDataError>()(
-  "NoSheetDataError",
+class NoTabDataError extends Schema.TaggedError<NoTabDataError>()(
+  "NoTabDataError",
   {
-    /** The index of the sheet with no rows */
-    sheetIndex: Schema.Natural,
+    /** The index of the tab with no rows */
+    tabIndex: Schema.Natural,
   },
 ) {
   override get message() {
-    return `The sheet at index [${this.sheetIndex.toString()}] does not have any rows`;
+    return `The tab at index [${this.tabIndex.toString()}] does not have any rows`;
   }
 
   /** Read by NodeRuntime's default teardown to set the process exit code */
@@ -22,4 +22,4 @@ class NoSheetDataError extends Schema.TaggedError<NoSheetDataError>()(
   override readonly [Runtime.errorReported] = false;
 }
 
-export default NoSheetDataError;
+export default NoTabDataError;

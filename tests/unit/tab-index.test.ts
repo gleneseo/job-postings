@@ -1,28 +1,28 @@
 import { describe, expect, it } from "vitest";
 import { Schema } from "effect";
 
-import SheetIndex from "../../src/helpers/sheet-index.js";
+import TabIndex from "../../src/helpers/tab-index.js";
 
-const isSheetIndex = Schema.is(SheetIndex);
+const isTabIndex = Schema.is(TabIndex);
 
-describe("SheetIndex", () => {
+describe("TabIndex", () => {
   it("should accept zero", () => {
-    expect(isSheetIndex(0)).toBe(true);
+    expect(isTabIndex(0)).toBe(true);
   });
 
   it("should accept a positive integer", () => {
-    expect(isSheetIndex(3)).toBe(true);
+    expect(isTabIndex(3)).toBe(true);
   });
 
   it("should reject a negative number", () => {
-    expect(isSheetIndex(-1)).toBe(false);
+    expect(isTabIndex(-1)).toBe(false);
   });
 
   it("should reject a non-integer number", () => {
-    expect(isSheetIndex(1.5)).toBe(false);
+    expect(isTabIndex(1.5)).toBe(false);
   });
 
   it("should reject a non-number value", () => {
-    expect(isSheetIndex("0")).toBe(false);
+    expect(isTabIndex("0")).toBe(false);
   });
 });

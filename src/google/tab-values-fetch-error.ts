@@ -1,20 +1,20 @@
 import { Runtime, Schema } from "effect";
 
 /**
- * Raised when a Google Sheets values fetch request fails, wrapping the
+ * Raised when fetching the values of a tab fails, wrapping the
  * underlying cause (e.g. a network or API error)
  */
-class SheetValuesFetchError extends Schema.TaggedError<SheetValuesFetchError>()(
-  "SheetValuesFetchError",
+class TabValuesFetchError extends Schema.TaggedError<TabValuesFetchError>()(
+  "TabValuesFetchError",
   {
-    /** The index of the sheet whose values failed to fetch */
-    sheetIndex: Schema.Natural,
+    /** The index of the tab whose values failed to fetch */
+    tabIndex: Schema.Natural,
     /** The underlying error that caused the fetch to fail */
     cause: Schema.Defect(),
   },
 ) {
   override get message() {
-    return `Failed to fetch values for sheet [${this.sheetIndex.toString()}]`;
+    return `Failed to fetch values for tab [${this.tabIndex.toString()}]`;
   }
 
   /** Read by NodeRuntime's default teardown to set the process exit code */
@@ -24,4 +24,4 @@ class SheetValuesFetchError extends Schema.TaggedError<SheetValuesFetchError>()(
   override readonly [Runtime.errorReported] = false;
 }
 
-export default SheetValuesFetchError;
+export default TabValuesFetchError;
