@@ -51,13 +51,12 @@ type JobPostingsError =
  * standard out as CSV, logging progress to standard error along the way
  * and, for a domain error, a human-readable message before failing with it
  *
- * @param keyFilePath - Path to the Google service account JSON key file, if
+ * @param key - Path to the Google service account JSON key file, if
  * given; otherwise the well-known location is used
  * @param folderName - Name of the Google Drive folder containing the sheet
  * file
  * @param fileName - Name of the sheet file to read
  * @param sheetIndex - Zero-based index of the sheet to read
- * @param output - Path to write the resulting CSV file to
  * @param quiet - When true, suppresses the banner and status messages;
  * runtime errors are still printed
  * @param timeoutSeconds - Network request timeout, in seconds, for each
@@ -66,14 +65,14 @@ type JobPostingsError =
  * with the {@link JobPostingsError} that stopped it, after logging why
  */
 const handleJobPostingsCommand: (
-  keyFilePath: Option.Option<typeof FilePath.Type>,
+  key: Option.Option<typeof FilePath.Type>,
   folderName: typeof FolderName.Type,
   fileName: typeof FileName.Type,
   sheetIndex: typeof SheetIndex.Type,
   quiet: boolean,
   timeoutSeconds: typeof TimeoutSeconds.Type,
 ) => Effect.Effect<void, JobPostingsError, GoogleTools | KeyFileResolver> = (
-  keyFilePath,
+  key,
   folderName,
   fileName,
   sheetIndex,
@@ -90,7 +89,7 @@ const handleJobPostingsCommand: (
 
     yield* printBanner(quiet);
 
-    const keyFile = yield* keyFileResolver.resolve(keyFilePath);
+    const keyFile = yield* keyFileResolver.resolve(key);
 
     yield* logStatus(
       `Authenticating with key file [${keyFile.path}] (${keyFile.source}).`,

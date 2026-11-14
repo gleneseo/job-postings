@@ -27,7 +27,7 @@ import SheetIndex from "../../../../src/helpers/sheet-index.js";
 import TimeoutSeconds from "../../../../src/helpers/timeout-seconds.js";
 
 const fakeAuth = {} as unknown as Auth.GoogleAuth;
-const keyFilePath = FilePath.make("/tmp/key.json");
+const key = FilePath.make("/tmp/key.json");
 const folderName = FolderName.make("reports");
 const fileName = FileName.make("Job Postings");
 const sheetIndex = SheetIndex.make(0);
@@ -38,7 +38,7 @@ const fakeFolder: drive_v3.Schema$File = { id: "1", name: "reports" };
 const fakeFile: drive_v3.Schema$File = { id: "2", name: "Job Postings" };
 const fakeValues: string[][] = [["title", "company"]];
 const fakeCsv = "title,company";
-const msgAuthenticating = `Authenticating with key file [${keyFilePath}] (flag).`;
+const msgAuthenticating = `Authenticating with key file [${key}] (flag).`;
 const msgSearchingForFolder = `Searching for folder [${folderName}].`;
 const msgSearchingForFile = `Searching for file [${fileName}] in folder [${folderName}].`;
 const msgFetchingSheetValues = (index: typeof SheetIndex.Type) =>
@@ -93,7 +93,7 @@ const makeKeyFileResolverTestDouble = (
     resolve ??
       ((explicitPath: Option.Option<typeof FilePath.Type>) =>
         Effect.succeed({
-          path: Option.getOrElse(explicitPath, () => keyFilePath),
+          path: Option.getOrElse(explicitPath, () => key),
           source: Option.isSome(explicitPath)
             ? ("flag" as const)
             : ("well-known location" as const),
@@ -123,7 +123,7 @@ describe("handleJobPostingsCommand", () => {
         const googleTools = makeGoogleToolsTestDouble({});
 
         yield* handleJobPostingsCommand(
-          Option.some(keyFilePath),
+          Option.some(key),
           folderName,
           fileName,
           sheetIndex,
@@ -131,9 +131,7 @@ describe("handleJobPostingsCommand", () => {
           timeoutSeconds,
         ).pipe(provideTestDoubles(googleTools));
 
-        expect(googleTools.getAuth).toHaveBeenCalledExactlyOnceWith(
-          keyFilePath,
-        );
+        expect(googleTools.getAuth).toHaveBeenCalledExactlyOnceWith(key);
         expect(googleTools.getFolder).toHaveBeenCalledExactlyOnceWith(
           fakeAuth,
           folderName,
@@ -173,7 +171,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          Option.some(keyFilePath),
+          Option.some(key),
           folderName,
           fileName,
           sheetIndex,
@@ -204,7 +202,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          Option.some(keyFilePath),
+          Option.some(key),
           folderName,
           fileName,
           sheetIndex,
@@ -232,7 +230,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          Option.some(keyFilePath),
+          Option.some(key),
           folderName,
           fileName,
           sheetIndex,
@@ -263,7 +261,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          Option.some(keyFilePath),
+          Option.some(key),
           folderName,
           fileName,
           sheetIndex,
@@ -294,7 +292,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          Option.some(keyFilePath),
+          Option.some(key),
           folderName,
           fileName,
           sheetIndex,
@@ -323,7 +321,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          Option.some(keyFilePath),
+          Option.some(key),
           folderName,
           fileName,
           sheetIndex,
@@ -355,7 +353,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          Option.some(keyFilePath),
+          Option.some(key),
           folderName,
           fileName,
           sheetIndex,
@@ -385,7 +383,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          Option.some(keyFilePath),
+          Option.some(key),
           folderName,
           fileName,
           sheetIndex,
@@ -413,7 +411,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          Option.some(keyFilePath),
+          Option.some(key),
           folderName,
           fileName,
           sheetIndex,
@@ -446,7 +444,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          Option.some(keyFilePath),
+          Option.some(key),
           folderName,
           fileName,
           invalidSheetIndex,
@@ -478,7 +476,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          Option.some(keyFilePath),
+          Option.some(key),
           folderName,
           fileName,
           sheetIndex,
@@ -511,7 +509,7 @@ describe("handleJobPostingsCommand", () => {
         });
 
         const failure = yield* handleJobPostingsCommand(
-          Option.some(keyFilePath),
+          Option.some(key),
           folderName,
           fileName,
           sheetIndex,
@@ -536,7 +534,7 @@ describe("handleJobPostingsCommand", () => {
       const googleTools = makeGoogleToolsTestDouble({});
 
       yield* handleJobPostingsCommand(
-        Option.some(keyFilePath),
+        Option.some(key),
         folderName,
         fileName,
         sheetIndex,
@@ -573,12 +571,10 @@ describe("handleJobPostingsCommand", () => {
         expect(keyFileResolver.resolve).toHaveBeenCalledExactlyOnceWith(
           Option.none(),
         );
-        expect(googleTools.getAuth).toHaveBeenCalledExactlyOnceWith(
-          keyFilePath,
-        );
+        expect(googleTools.getAuth).toHaveBeenCalledExactlyOnceWith(key);
         assert.include(
           yield* TestConsole.errorLines,
-          `Authenticating with key file [${keyFilePath}] (well-known location).`,
+          `Authenticating with key file [${key}] (well-known location).`,
         );
       }),
   );
@@ -589,7 +585,7 @@ describe("handleJobPostingsCommand", () => {
       Effect.gen(function* () {
         const googleTools = makeGoogleToolsTestDouble({});
         const error = new KeyFileNotFoundError({
-          path: keyFilePath,
+          path: key,
           source: "flag",
         });
         const keyFileResolver = makeKeyFileResolverTestDouble(() =>
@@ -597,7 +593,7 @@ describe("handleJobPostingsCommand", () => {
         );
 
         const result = yield* handleJobPostingsCommand(
-          Option.some(keyFilePath),
+          Option.some(key),
           folderName,
           fileName,
           sheetIndex,
@@ -609,7 +605,7 @@ describe("handleJobPostingsCommand", () => {
         expect(googleTools.getAuth).not.toHaveBeenCalled();
         assert.include(
           yield* TestConsole.errorLines,
-          `❌ Could not find key file [${keyFilePath}] (flag). Make sure the file exists.`,
+          `❌ Could not find key file [${key}] (flag). Make sure the file exists.`,
         );
       }),
   );
