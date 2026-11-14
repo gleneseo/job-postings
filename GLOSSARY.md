@@ -10,6 +10,10 @@ _Avoid_: Tool (that is the whole `gleneseo-helpers` CLI), script
 The Google Sheet, kept in a Google Drive folder, that tracks the user's job postings and that the `job-postings` Helper downloads.
 _Avoid_: Job list, spreadsheet
 
+**Tab**:
+One of the pages inside the Job Postings sheet. The `job-postings` Helper reads a single Tab, chosen by its position, the first one by default.
+_Avoid_: Sheet (that is the whole Job Postings sheet), worksheet
+
 **Service account key file**:
 The JSON credentials file that lets the `job-postings` Helper act as a Google Cloud service account when reading Google Drive and Sheets. It is either given explicitly or, by default, found in the Config directory as `job-postings.json`.
 _Avoid_: Credentials, API key
