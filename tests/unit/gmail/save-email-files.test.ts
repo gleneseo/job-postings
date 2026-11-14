@@ -1,5 +1,5 @@
 import { NodeServices } from "@effect/platform-node";
-import { assert, describe, expect, it } from "@effect/vitest";
+import { assert, describe, expect, it, vi } from "@effect/vitest";
 import { Effect, FileSystem, Layer, Path, PlatformError } from "effect";
 import EmailFilesWriteError from "../../../src/gmail/email-files-write-error.js";
 import saveEmailFiles from "../../../src/gmail/save-email-files.js";
@@ -61,5 +61,30 @@ describe("saveEmailFiles", () => {
         new EmailFilesWriteError({ directory: "out", cause }),
       );
     }),
+  );
+
+  it.effect(
+    "should not touch the file system when there are no emails to save",
+    () =>
+      Effect.gen(function* () {
+        const makeDirectory = vi.fn<FileSystem.FileSystem["makeDirectory"]>(
+          () => Effect.void,
+        );
+        const writeFileString = vi.fn<FileSystem.FileSystem["writeFileString"]>(
+          () => Effect.void,
+        );
+
+        yield* saveEmailFiles("out", []).pipe(
+          Effect.provide(
+            Layer.mergeAll(
+              FileSystem.layerNoop({ makeDirectory, writeFileString }),
+              Path.layer,
+            ),
+          ),
+        );
+
+        expect(makeDirectory).not.toHaveBeenCalled();
+        expect(writeFileString).not.toHaveBeenCalled();
+      }),
   );
 });

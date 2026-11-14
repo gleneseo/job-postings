@@ -5,7 +5,7 @@ import planEmailFiles from "../helpers/plan-email-files.js";
 
 /**
  * Writes each email to a file in the given directory, creating the directory
- * if needed
+ * if needed. Does nothing when there are no emails.
  *
  * @param directory - The directory to write the files to
  * @param emails - The emails to write
@@ -16,6 +16,10 @@ const saveEmailFiles = Effect.fn("save-email-files")(function* (
   directory: string,
   emails: readonly (typeof Email.Type)[],
 ) {
+  if (emails.length === 0) {
+    return;
+  }
+
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
 

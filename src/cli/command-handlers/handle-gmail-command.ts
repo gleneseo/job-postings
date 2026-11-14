@@ -119,10 +119,14 @@ const handleGmailCommand: (
     ];
 
     if (Option.isSome(output)) {
-      yield* saveEmailFiles(output.value, all);
-      yield* logStatus(
-        `Saved ${all.length.toString()} file(s) to ${output.value}/.`,
-      );
+      if (all.length === 0) {
+        yield* logStatus(`No emails to save to ${output.value}/.`);
+      } else {
+        yield* saveEmailFiles(output.value, all);
+        yield* logStatus(
+          `Saved ${all.length.toString()} file(s) to ${output.value}/.`,
+        );
+      }
     }
 
     if (all.length > 0) {
