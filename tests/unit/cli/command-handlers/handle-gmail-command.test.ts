@@ -408,6 +408,7 @@ describe("handleGmailCommand", () => {
           false,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
+        expect(doubles.getSavedIds).not.toHaveBeenCalled();
         expect(failure).toStrictEqual(error);
         expect(Runtime.getErrorExitCode(failure)).toBe(42);
         assert.deepStrictEqual((yield* TestConsole.errorLines).slice(-1), [
@@ -435,6 +436,7 @@ describe("handleGmailCommand", () => {
           false,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
+        expect(doubles.getSavedIds).not.toHaveBeenCalled();
         expect(failure).toStrictEqual(error);
         expect(Runtime.getErrorExitCode(failure)).toBe(50);
         assert.deepStrictEqual((yield* TestConsole.errorLines).slice(-1), [
@@ -498,7 +500,7 @@ describe("handleGmailCommand", () => {
   );
 
   it.effect(
-    "should fail with a distinct exit code on a database failure after logging it",
+    "should fail with a distinct exit code on a database failure after authorizing and logging it",
     () =>
       Effect.gen(function* () {
         const error = new EmailStoreError({
@@ -516,10 +518,11 @@ describe("handleGmailCommand", () => {
           false,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
-        expect(doubles.authorize).not.toHaveBeenCalled();
+        expect(doubles.authorize).toHaveBeenCalledOnce();
+        expect(doubles.listMessageIds).not.toHaveBeenCalled();
         expect(failure).toStrictEqual(error);
         expect(Runtime.getErrorExitCode(failure)).toBe(60);
-        assert.deepStrictEqual(yield* TestConsole.errorLines, [
+        assert.deepStrictEqual((yield* TestConsole.errorLines).slice(-1), [
           `❌ Error while accessing the email database [${db}] (locked). Please check the file and try again.`,
         ]);
       }),

@@ -110,7 +110,7 @@ npm start -- gmail [flags]
 
 The subcommand is read-only: it requests only the `gmail.readonly` scope and never modifies or deletes your mail. Progress messages are logged to standard error, keeping standard out free for the table.
 
-**File lookup.** The OAuth2 credentials file is found like the `job-postings` key file: `--credentials` if given, otherwise `gleneseo-helpers/gmail.json` in the Config directory, failing if no regular file exists there. The OAuth token and the SQLite database default to `gleneseo-helpers/gmail-token.json` and `gleneseo-helpers/gmail.sqlite` in the same directory, and are created on the first run.
+**File lookup.** The OAuth2 credentials file is found like the `job-postings` key file: `--credentials` if given, otherwise `gleneseo-helpers/gmail.json` in the Config directory, failing if no regular file exists there. The OAuth token and the SQLite database default to `gleneseo-helpers/gmail-token.json` and `gleneseo-helpers/gmail.sqlite` in the same directory. The token is created on the first successful sign-in and the database only after authorizing, so a run that fails to authorize doesn't leave an empty database behind.
 
 | Flag               | Description                                                                                                                                                                      | Default                                      |
 | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
