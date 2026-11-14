@@ -6,6 +6,7 @@ import {
   Layer,
   Option,
   Path,
+  PlatformError,
   Runtime,
 } from "effect";
 import { TestConsole } from "effect/testing";
@@ -93,7 +94,9 @@ const makeDoubles = (
         exists: true,
       }),
   ),
-  makeDirectory: vi.fn(() => Effect.void),
+  makeDirectory: vi.fn<FileSystem.FileSystem["makeDirectory"]>(
+    () => Effect.void,
+  ),
   writeFileString: vi.fn(overrides.writeFileString ?? (() => Effect.void)),
   authorize: vi.fn(overrides.authorize ?? (() => Effect.succeed(fakeAuth))),
   listMessageIds: vi.fn(
@@ -526,12 +529,17 @@ describe("handleGmailCommand", () => {
     "should fail with a distinct exit code on a file write failure after logging it",
     () =>
       Effect.gen(function* () {
+        const cause = PlatformError.systemError({
+          _tag: "PermissionDenied",
+          module: "FileSystem",
+          method: "makeDirectory",
+          pathOrDescriptor: "output",
+          description: "read-only",
+        });
         const doubles = makeDoubles({
           writeFileString: () => Effect.die("unused"),
         });
-        doubles.makeDirectory.mockReturnValue(
-          Effect.fail("read-only") as never,
-        );
+        doubles.makeDirectory.mockReturnValue(Effect.fail(cause));
 
         const failure = yield* handleGmailCommand(
           senders,
@@ -543,11 +551,11 @@ describe("handleGmailCommand", () => {
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(failure).toStrictEqual(
-          new EmailFilesWriteError({ directory: "output", cause: "read-only" }),
+          new EmailFilesWriteError({ directory: "output", cause }),
         );
         expect(Runtime.getErrorExitCode(failure)).toBe(61);
         assert.deepStrictEqual((yield* TestConsole.errorLines).slice(-1), [
-          "❌ Error while saving emails to [output] (read-only). Please check the directory and try again.",
+          "❌ Error while saving emails to [output] (PermissionDenied: FileSystem.makeDirectory (output): read-only). Please check the directory and try again.",
         ]);
       }),
   );

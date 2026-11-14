@@ -28,10 +28,10 @@ const ClientSecrets = Schema.Struct({
   redirect_uris: Schema.optional(Schema.Array(Schema.String)),
 });
 
-const CredentialsFile = Schema.Struct({
-  installed: Schema.optional(ClientSecrets),
-  web: Schema.optional(ClientSecrets),
-});
+const CredentialsFile = Schema.Union([
+  Schema.Struct({ installed: ClientSecrets }),
+  Schema.Struct({ web: ClientSecrets }),
+]);
 
 const person = (list: AddressObject | undefined) => {
   const first = list?.value[0];
@@ -101,13 +101,7 @@ class GmailTools extends Context.Service<
             () => JSON.parse(text) as unknown,
           );
           const keys = yield* Schema.decodeUnknownEffect(CredentialsFile)(json);
-          const secrets = keys.installed ?? keys.web;
-          if (!secrets) {
-            return yield* Effect.fail(
-              "expected an `installed` or `web` OAuth client",
-            );
-          }
-          return secrets;
+          return "installed" in keys ? keys.installed : keys.web;
         }).pipe(
           Effect.mapError(
             (cause) =>
