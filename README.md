@@ -102,7 +102,7 @@ Downloads inbox emails from one or more senders (an address like `jobs@example.c
 
 - stored in a local SQLite file, so later runs only fetch new messages,
 - printed to standard out as a table, oldest first, and
-- optionally saved as a plain-text file (`--save-files`).
+- optionally saved as a plain-text file (`--output`).
 
 ```sh
 npm start -- gmail [flags]
@@ -116,9 +116,9 @@ The subcommand is read-only: it requests only the `gmail.readonly` scope and nev
 | ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | `--sender`, `-s`          | An email address or domain to search for (`from:` in Gmail). Repeat it for several senders; an email from any of them matches. Without it, every inbox email is downloaded.      | —                                            |
 | `--credentials-file-path` | Path to the OAuth2 credentials JSON file                                                                                                                                         | `gleneseo-helpers/gmail.json`                |
-| `--db`, `-d`              | The SQLite file to write emails to                                                                                                                                               | `gleneseo-helpers/gmail.sqlite`              |
+| `--database`, `-d`        | The SQLite file to write emails to                                                                                                                                               | `gleneseo-helpers/gmail.sqlite`              |
 | `--token`, `-t`           | Where to cache the OAuth token                                                                                                                                                   | `gleneseo-helpers/gmail-token.json`          |
-| `--save-files[=dir]`      | Also save each email as `<subject>.txt` (`.html` if it has only an HTML body) directly in `dir`, including emails already in the database. The directory must be given with `=`. | off; `output` when the flag has no directory |
+| `--output[=dir]`          | Also save each email as `<subject>.txt` (`.html` if it has only an HTML body) directly in `dir`, including emails already in the database. The directory must be given with `=`. | off; `output` when the flag has no directory |
 | `--quiet`, `-q`           | Suppress the banner and status messages; runtime errors print                                                                                                                    | `false`                                      |
 
 For example:
@@ -128,10 +128,10 @@ For example:
 npm start -- gmail
 
 # Several senders at once, also saving each email to files in output/
-npm start -- gmail --sender linkedin.com --sender ziprecruiter.com --save-files
+npm start -- gmail --sender linkedin.com --sender ziprecruiter.com --output
 
 # A single address, saving files to a chosen directory
-npm start -- gmail --sender jobs@example.com --save-files=./emails
+npm start -- gmail --sender jobs@example.com --output=./emails
 ```
 
 The first run opens your browser to a Google consent page. Choose the test user, click **Advanced → Go to <app name> (unsafe)** past the "Google hasn't verified this app" warning (expected, since you created the app), and approve read-only access. The token is then cached, so later runs don't open the browser. While the consent screen is in "Testing" status, Google expires the token after about 7 days; delete the token file and run again to re-authorize.

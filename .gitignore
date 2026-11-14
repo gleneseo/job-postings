@@ -158,5 +158,5 @@ PLAN.md
 .claude/worktrees/
 .workmux/
 
-# Emails saved by the gmail command's --save-files
+# Emails saved by the gmail command's --output
 output/

@@ -43,11 +43,11 @@ type GmailError =
  * every inbox email
  * @param credentialsFilePath - Path to the OAuth2 credentials JSON file, if
  * given; otherwise the well-known location is used
- * @param db - Path of the SQLite database of downloaded emails, if given;
+ * @param database - Path of the SQLite database of downloaded emails, if given;
  * otherwise `gmail.sqlite` in the Config directory is used
  * @param token - Path of the cached OAuth token, if given; otherwise
  * `gmail-token.json` in the Config directory is used
- * @param saveFiles - Directory to also save each email to as a file, or none
+ * @param output - Directory to also save each email to as a file, or none
  * to skip saving files
  * @param quiet - When true, suppresses the banner and status messages;
  * runtime errors are still printed
@@ -57,9 +57,9 @@ type GmailError =
 const handleGmailCommand: (
   senders: readonly (typeof Sender.Type)[],
   credentialsFilePath: Option.Option<typeof FilePath.Type>,
-  db: Option.Option<typeof FilePath.Type>,
+  database: Option.Option<typeof FilePath.Type>,
   token: Option.Option<typeof FilePath.Type>,
-  saveFiles: Option.Option<typeof FilePath.Type>,
+  output: Option.Option<typeof FilePath.Type>,
   quiet: boolean,
 ) => Effect.Effect<
   void,
@@ -71,7 +71,7 @@ const handleGmailCommand: (
   | GmailTools
   | Path.Path
 > = Effect.fn("gmail-command")(
-  function* (senders, credentialsFilePath, db, token, saveFiles, quiet) {
+  function* (senders, credentialsFilePath, database, token, output, quiet) {
     const configFileLocator = yield* ConfigFileLocator;
     const credentialsFileResolver = yield* CredentialsFileResolver;
     const gmailTools = yield* GmailTools;
@@ -84,19 +84,25 @@ const handleGmailCommand: (
 
     const credentialsFile =
       yield* credentialsFileResolver.resolve(credentialsFilePath);
-    const dbPath = (yield* configFileLocator.locate(db, "gmail.sqlite")).path;
-    const tokenPath = (yield* configFileLocator.locate(
+    const databaseFile = yield* configFileLocator.locate(
+      database,
+      "gmail.sqlite",
+    );
+    const tokenFile = yield* configFileLocator.locate(
       token,
       "gmail-token.json",
-    )).path;
+    );
 
     const query = buildGmailQuery(senders);
-    const savedIds = yield* emailStore.getSavedIds(dbPath);
+    const savedIds = yield* emailStore.getSavedIds(databaseFile.path);
 
     yield* logStatus(
       `Authorizing with OAuth2 credentials file [${credentialsFile.path}] (${credentialsFile.source}).`,
     );
-    const auth = yield* gmailTools.authorize(credentialsFile.path, tokenPath);
+    const auth = yield* gmailTools.authorize(
+      credentialsFile.path,
+      tokenFile.path,
+    );
 
     yield* logStatus(`Searching Gmail for [${query}].`);
     const ids = yield* gmailTools.listMessageIds(auth, query);
@@ -107,16 +113,16 @@ const handleGmailCommand: (
     );
 
     const fetched = yield* gmailTools.fetchEmails(auth, newIds);
-    yield* emailStore.saveEmails(dbPath, fetched);
+    yield* emailStore.saveEmails(databaseFile.path, fetched);
     const all = [
       ...fetched,
-      ...(yield* emailStore.getEmailsByIds(dbPath, skippedIds)),
+      ...(yield* emailStore.getEmailsByIds(databaseFile.path, skippedIds)),
     ];
 
-    if (Option.isSome(saveFiles)) {
-      yield* saveEmailFiles(saveFiles.value, all);
+    if (Option.isSome(output)) {
+      yield* saveEmailFiles(output.value, all);
       yield* logStatus(
-        `Saved ${all.length.toString()} file(s) to ${saveFiles.value}/.`,
+        `Saved ${all.length.toString()} file(s) to ${output.value}/.`,
       );
     }
 

@@ -20,7 +20,7 @@ const credentialsFilePath = Flag.File("credentials-file-path").pipe(
   ),
 );
 
-const db = Flag.File("db").pipe(
+const database = Flag.File("database").pipe(
   Flag.withSchema(FilePath),
   Flag.withAlias("d"),
   Flag.optional,
@@ -38,12 +38,12 @@ const token = Flag.File("token").pipe(
   ),
 );
 
-const saveFiles = Flag.String("save-files").pipe(
+const output = Flag.String("output").pipe(
   Flag.withSchema(FilePath),
   Flag.withOptionalValue("output"),
   Flag.optional,
   Flag.withDescription(
-    "Also save each email as <subject>.txt (.html if it has only an HTML body) in a directory, including emails already in the database; give it as --save-files=<dir> (default: output)",
+    "Also save each email as <subject>.txt (.html if it has only an HTML body) in a directory, including emails already in the database; give it as --output=<dir> (default: output)",
   ),
 );
 
@@ -57,14 +57,14 @@ const quiet = Flag.Boolean("quiet").pipe(
 
 const gmailCommand = Command.make(
   "gmail",
-  { senders, credentialsFilePath, db, token, saveFiles, quiet },
-  ({ senders, credentialsFilePath, db, token, saveFiles, quiet }) =>
+  { senders, credentialsFilePath, database, token, output, quiet },
+  ({ senders, credentialsFilePath, database, token, output, quiet }) =>
     handleGmailCommand(
       senders,
       credentialsFilePath,
-      db,
+      database,
       token,
-      saveFiles,
+      output,
       quiet,
     ),
 ).pipe(
