@@ -140,7 +140,7 @@ class GmailTools extends Context.Service<
         );
 
         const token = yield* readToken(tokenPath).pipe(
-          Effect.mapError((cause) => new GmailAuthError({ cause })),
+          Effect.mapError((cause) => new GmailAuthError({ tokenPath, cause })),
         );
         if (Option.isSome(token)) {
           client.setCredentials(token.value);
@@ -151,7 +151,7 @@ class GmailTools extends Context.Service<
         const { credentials } = yield* Effect.tryPromise({
           try: () =>
             authenticate({ keyfilePath: credentialsPath, scopes: SCOPES }),
-          catch: (cause) => new GmailAuthError({ cause }),
+          catch: (cause) => new GmailAuthError({ tokenPath, cause }),
         });
         // `local-auth` bundles a different google-auth-library version than
         // `googleapis`, so its client is structurally incompatible with
@@ -166,7 +166,9 @@ class GmailTools extends Context.Service<
                 mode: 0o600,
               }),
             ),
-            Effect.mapError((cause) => new GmailAuthError({ cause })),
+            Effect.mapError(
+              (cause) => new GmailAuthError({ tokenPath, cause }),
+            ),
           );
         return client;
       });

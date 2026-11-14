@@ -6,6 +6,8 @@ import { Runtime, Schema } from "effect";
 class GmailAuthError extends Schema.TaggedError<GmailAuthError>()(
   "GmailAuthError",
   {
+    /** The path of the cached OAuth token */
+    tokenPath: Schema.NonEmptyString,
     /** The underlying error that caused the authorization to fail */
     cause: Schema.Defect(),
   },

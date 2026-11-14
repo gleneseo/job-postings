@@ -1,6 +1,5 @@
 import { Command, Flag } from "effect/cli";
 import handleGmailCommand from "../command-handlers/handle-gmail-command.js";
-import defaultGmailPaths from "../../helpers/default-gmail-paths.js";
 import FilePath from "../../helpers/file-path.js";
 import Sender from "../../helpers/sender.js";
 
@@ -13,30 +12,29 @@ const senders = Flag.String("sender").pipe(
   ),
 );
 
-const credentials = Flag.String("credentials").pipe(
+const credentialsFilePath = Flag.File("credentials-file-path").pipe(
   Flag.withSchema(FilePath),
-  Flag.withAlias("c"),
   Flag.optional,
   Flag.withDescription(
-    `The path to the Google OAuth client JSON file (default: ${defaultGmailPaths.credentials})`,
+    "The path to the OAuth2 credentials JSON file (default: gleneseo-helpers/gmail.json in $XDG_CONFIG_HOME, or ~/.config if unset)",
   ),
 );
 
-const db = Flag.String("db").pipe(
+const db = Flag.File("db").pipe(
   Flag.withSchema(FilePath),
   Flag.withAlias("d"),
-  Flag.withDefault(FilePath.make(defaultGmailPaths.db)),
+  Flag.optional,
   Flag.withDescription(
-    `The SQLite file to write emails to (default: ${defaultGmailPaths.db})`,
+    "The SQLite file to write emails to (default: gleneseo-helpers/gmail.sqlite in $XDG_CONFIG_HOME, or ~/.config if unset)",
   ),
 );
 
-const token = Flag.String("token").pipe(
+const token = Flag.File("token").pipe(
   Flag.withSchema(FilePath),
   Flag.withAlias("t"),
-  Flag.withDefault(FilePath.make(defaultGmailPaths.token)),
+  Flag.optional,
   Flag.withDescription(
-    `Where to cache the OAuth token (default: ${defaultGmailPaths.token})`,
+    "Where to cache the OAuth token (default: gleneseo-helpers/gmail-token.json in $XDG_CONFIG_HOME, or ~/.config if unset)",
   ),
 );
 
@@ -49,11 +47,26 @@ const saveFiles = Flag.String("save-files").pipe(
   ),
 );
 
+const quiet = Flag.Boolean("quiet").pipe(
+  Flag.withAlias("q"),
+  Flag.withDefault(false),
+  Flag.withDescription(
+    "Suppress the banner and status messages (default: false)",
+  ),
+);
+
 const gmailCommand = Command.make(
   "gmail",
-  { senders, credentials, db, token, saveFiles },
-  ({ senders, credentials, db, token, saveFiles }) =>
-    handleGmailCommand(senders, credentials, db, token, saveFiles),
+  { senders, credentialsFilePath, db, token, saveFiles, quiet },
+  ({ senders, credentialsFilePath, db, token, saveFiles, quiet }) =>
+    handleGmailCommand(
+      senders,
+      credentialsFilePath,
+      db,
+      token,
+      saveFiles,
+      quiet,
+    ),
 ).pipe(
   Command.withDescription(
     "Download inbox emails from the given senders into SQLite and print them as a table",

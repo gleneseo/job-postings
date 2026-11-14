@@ -55,7 +55,7 @@ Command.run(gleneseoHelpersCommand, { version: packageJson.version }).pipe(
       ObservabilityLayer,
       CliConfigLayer,
     ).pipe(
-      Layer.provide(ConfigFileLocator.layer),
+      Layer.provideMerge(ConfigFileLocator.layer),
       Layer.provideMerge(NodeServices.layer),
     ),
   ),

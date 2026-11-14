@@ -10,8 +10,11 @@ import {
 } from "effect";
 import { TestConsole } from "effect/testing";
 import type { Auth } from "googleapis";
+import banner from "../../../../src/cli/banner.js";
 import handleGmailCommand from "../../../../src/cli/command-handlers/handle-gmail-command.js";
-import CredentialsNotFoundError from "../../../../src/gmail/credentials-not-found-error.js";
+import ConfigFileLocator from "../../../../src/config/config-file-locator.js";
+import CredentialsFileNotFoundError from "../../../../src/config/credentials-file-not-found-error.js";
+import CredentialsFileResolver from "../../../../src/config/credentials-file-resolver.js";
 import CredentialsReadError from "../../../../src/gmail/credentials-read-error.js";
 import EmailFilesWriteError from "../../../../src/gmail/email-files-write-error.js";
 import EmailStore from "../../../../src/gmail/email-store.js";
@@ -20,7 +23,6 @@ import GmailAuthError from "../../../../src/gmail/gmail-auth-error.js";
 import GmailFetchError from "../../../../src/gmail/gmail-fetch-error.js";
 import GmailListError from "../../../../src/gmail/gmail-list-error.js";
 import GmailTools from "../../../../src/gmail/gmail-tools.js";
-import defaultGmailPaths from "../../../../src/helpers/default-gmail-paths.js";
 import type Email from "../../../../src/helpers/email.js";
 import FilePath from "../../../../src/helpers/file-path.js";
 import Sender from "../../../../src/helpers/sender.js";
@@ -29,6 +31,8 @@ const fakeAuth = {} as unknown as Auth.OAuth2Client;
 const credentials = FilePath.make("/secrets/client.json");
 const db = FilePath.make("/data/emails.sqlite");
 const token = FilePath.make("/data/token.json");
+const wellKnown = (fileName: string) =>
+  FilePath.make(`/config/gleneseo-helpers/${fileName}`);
 const senders = [Sender.make("example.com")];
 
 const makeEmail = (id: string, receivedAt: string): typeof Email.Type => ({
@@ -45,7 +49,15 @@ const savedEmail = makeEmail("saved", "2026-01-01T00:00:00.000Z");
 
 const makeDoubles = (
   overrides: {
-    exists?: boolean;
+    resolve?: (
+      explicitPath: Option.Option<typeof FilePath.Type>,
+    ) => Effect.Effect<
+      {
+        path: typeof FilePath.Type;
+        source: "flag" | "well-known location";
+      },
+      CredentialsFileNotFoundError
+    >;
     authorize?: () => Effect.Effect<
       Auth.OAuth2Client,
       CredentialsReadError | GmailAuthError
@@ -61,7 +73,26 @@ const makeDoubles = (
     writeFileString?: () => Effect.Effect<void>;
   } = {},
 ) => ({
-  exists: vi.fn(() => Effect.succeed(overrides.exists ?? true)),
+  resolve: vi.fn(
+    overrides.resolve ??
+      ((explicitPath: Option.Option<typeof FilePath.Type>) =>
+        Effect.succeed({
+          path: Option.getOrElse(explicitPath, () => wellKnown("gmail.json")),
+          source: Option.isSome(explicitPath)
+            ? ("flag" as const)
+            : ("well-known location" as const),
+        })),
+  ),
+  locate: vi.fn(
+    (explicitPath: Option.Option<typeof FilePath.Type>, fileName: string) =>
+      Effect.succeed({
+        path: Option.getOrElse(explicitPath, () => wellKnown(fileName)),
+        source: Option.isSome(explicitPath)
+          ? ("flag" as const)
+          : ("well-known location" as const),
+        exists: true,
+      }),
+  ),
   makeDirectory: vi.fn(() => Effect.void),
   writeFileString: vi.fn(overrides.writeFileString ?? (() => Effect.void)),
   authorize: vi.fn(overrides.authorize ?? (() => Effect.succeed(fakeAuth))),
@@ -80,6 +111,20 @@ const makeDoubles = (
     overrides.getEmailsByIds ?? (() => Effect.succeed([savedEmail])),
   ),
 });
+
+const withTTY = <A, E, R>(isTTY: boolean, effect: Effect.Effect<A, E, R>) =>
+  Effect.acquireUseRelease(
+    Effect.sync(() => {
+      const original = process.stdout.isTTY;
+      process.stdout.isTTY = isTTY;
+      return original;
+    }),
+    () => effect,
+    (original) =>
+      Effect.sync(() => {
+        process.stdout.isTTY = original;
+      }),
+  );
 
 /**
  * Provides the doubles, along with the test's console extended to also record
@@ -101,6 +146,10 @@ const provideDoubles =
         ),
         Effect.provide(
           Layer.mergeAll(
+            Layer.succeed(CredentialsFileResolver, {
+              resolve: doubles.resolve,
+            }),
+            Layer.succeed(ConfigFileLocator, { locate: doubles.locate }),
             Layer.succeed(GmailTools, {
               authorize: doubles.authorize,
               listMessageIds: doubles.listMessageIds,
@@ -112,7 +161,6 @@ const provideDoubles =
               getEmailsByIds: doubles.getEmailsByIds,
             }),
             FileSystem.layerNoop({
-              exists: doubles.exists,
               makeDirectory: doubles.makeDirectory,
               writeFileString: doubles.writeFileString,
             }),
@@ -133,12 +181,15 @@ describe("handleGmailCommand", () => {
         yield* handleGmailCommand(
           senders,
           Option.some(credentials),
-          db,
-          token,
+          Option.some(db),
+          Option.some(token),
           Option.none(),
+          false,
         ).pipe(provideDoubles(doubles, tables));
 
-        expect(doubles.exists).toHaveBeenCalledExactlyOnceWith(credentials);
+        expect(doubles.resolve).toHaveBeenCalledExactlyOnceWith(
+          Option.some(credentials),
+        );
         expect(doubles.getSavedIds).toHaveBeenCalledExactlyOnceWith(db);
         expect(doubles.authorize).toHaveBeenCalledExactlyOnceWith(
           credentials,
@@ -164,7 +215,7 @@ describe("handleGmailCommand", () => {
           ["Subject saved", "Subject new"],
         );
         assert.deepStrictEqual(yield* TestConsole.errorLines, [
-          `Authorizing with credentials file [${credentials}].`,
+          `Authorizing with OAuth2 credentials file [${credentials}] (flag).`,
           "Searching Gmail for [in:inbox from:example.com].",
           "Found 2 message(s), 1 already saved.",
         ]);
@@ -183,9 +234,10 @@ describe("handleGmailCommand", () => {
       yield* handleGmailCommand(
         [],
         Option.some(credentials),
-        db,
-        token,
+        Option.some(db),
+        Option.some(token),
         Option.none(),
+        false,
       ).pipe(provideDoubles(doubles, tables));
 
       assert.deepStrictEqual(tables, []);
@@ -196,22 +248,82 @@ describe("handleGmailCommand", () => {
     }),
   );
 
-  it.effect("should use the default credentials file when none is given", () =>
-    Effect.gen(function* () {
-      const doubles = makeDoubles();
+  it.effect(
+    "should use the well-known locations in the Config directory when no paths are given",
+    () =>
+      Effect.gen(function* () {
+        const doubles = makeDoubles();
 
-      yield* handleGmailCommand(
-        senders,
-        Option.none(),
-        db,
-        token,
-        Option.none(),
-      ).pipe(provideDoubles(doubles, []));
+        yield* handleGmailCommand(
+          senders,
+          Option.none(),
+          Option.none(),
+          Option.none(),
+          Option.none(),
+          false,
+        ).pipe(provideDoubles(doubles, []));
 
-      expect(doubles.exists).toHaveBeenCalledExactlyOnceWith(
-        defaultGmailPaths.credentials,
-      );
-    }),
+        expect(doubles.resolve).toHaveBeenCalledExactlyOnceWith(Option.none());
+        expect(doubles.locate.mock.calls).toStrictEqual([
+          [Option.none(), "gmail.sqlite"],
+          [Option.none(), "gmail-token.json"],
+        ]);
+        expect(doubles.getSavedIds).toHaveBeenCalledExactlyOnceWith(
+          wellKnown("gmail.sqlite"),
+        );
+        expect(doubles.authorize).toHaveBeenCalledExactlyOnceWith(
+          wellKnown("gmail.json"),
+          wellKnown("gmail-token.json"),
+        );
+        assert.strictEqual(
+          (yield* TestConsole.errorLines)[0],
+          `Authorizing with OAuth2 credentials file [${wellKnown("gmail.json")}] (well-known location).`,
+        );
+      }),
+  );
+
+  it.effect(
+    "should print the banner on an interactive terminal when not quiet",
+    () =>
+      Effect.gen(function* () {
+        yield* withTTY(
+          true,
+          handleGmailCommand(
+            senders,
+            Option.some(credentials),
+            Option.some(db),
+            Option.some(token),
+            Option.none(),
+            false,
+          ).pipe(provideDoubles(makeDoubles(), [])),
+        );
+
+        assert.deepStrictEqual(yield* TestConsole.logLines, [banner]);
+      }),
+  );
+
+  it.effect(
+    "should print neither the banner nor status messages, but still the table, when quiet",
+    () =>
+      Effect.gen(function* () {
+        const tables: unknown[] = [];
+
+        yield* withTTY(
+          true,
+          handleGmailCommand(
+            senders,
+            Option.some(credentials),
+            Option.some(db),
+            Option.some(token),
+            Option.some(FilePath.make("output")),
+            true,
+          ).pipe(provideDoubles(makeDoubles(), tables)),
+        );
+
+        assert.deepStrictEqual(yield* TestConsole.logLines, []);
+        assert.deepStrictEqual(yield* TestConsole.errorLines, []);
+        assert.strictEqual(tables.length, 1);
+      }),
   );
 
   it.effect(
@@ -223,9 +335,10 @@ describe("handleGmailCommand", () => {
         yield* handleGmailCommand(
           senders,
           Option.some(credentials),
-          db,
-          token,
+          Option.some(db),
+          Option.some(token),
           Option.some(FilePath.make("output")),
+          false,
         ).pipe(provideDoubles(doubles, []));
 
         expect(doubles.makeDirectory).toHaveBeenCalledExactlyOnceWith(
@@ -245,72 +358,31 @@ describe("handleGmailCommand", () => {
   );
 
   it.effect(
-    "should fail with a distinct exit code on a missing default credentials file after logging how to provide one",
+    "should fail with a distinct exit code on a missing credentials file after logging it",
     () =>
       Effect.gen(function* () {
-        const doubles = makeDoubles({ exists: false });
+        const notFound = new CredentialsFileNotFoundError({
+          path: wellKnown("gmail.json"),
+          source: "well-known location",
+        });
+        const doubles = makeDoubles({ resolve: () => Effect.fail(notFound) });
 
         const failure = yield* handleGmailCommand(
           senders,
           Option.none(),
-          db,
-          token,
+          Option.some(db),
+          Option.some(token),
           Option.none(),
+          false,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
+        expect(doubles.getSavedIds).not.toHaveBeenCalled();
         expect(doubles.authorize).not.toHaveBeenCalled();
-        expect(failure).toStrictEqual(
-          new CredentialsNotFoundError({
-            path: defaultGmailPaths.credentials,
-            isDefault: true,
-          }),
-        );
-        expect(Runtime.getErrorExitCode(failure)).toBe(40);
+        expect(failure).toStrictEqual(notFound);
+        expect(Runtime.getErrorExitCode(failure)).toBe(41);
         assert.deepStrictEqual(yield* TestConsole.errorLines, [
-          `❌ No credentials file. Pass --credentials <path> or place the Google OAuth client JSON at [${defaultGmailPaths.credentials}].`,
+          `❌ Could not find OAuth2 credentials file [${wellKnown("gmail.json")}] (well-known location). Make sure the file exists.`,
         ]);
-      }),
-  );
-
-  it.effect(
-    "should fail with a distinct exit code on a missing explicit credentials file after logging it",
-    () =>
-      Effect.gen(function* () {
-        const doubles = makeDoubles({ exists: false });
-
-        const failure = yield* handleGmailCommand(
-          senders,
-          Option.some(credentials),
-          db,
-          token,
-          Option.none(),
-        ).pipe(provideDoubles(doubles, []), Effect.flip);
-
-        expect(failure).toStrictEqual(
-          new CredentialsNotFoundError({ path: credentials, isDefault: false }),
-        );
-        assert.deepStrictEqual(yield* TestConsole.errorLines, [
-          `❌ Credentials file [${credentials}] not found.`,
-        ]);
-      }),
-  );
-
-  it.effect(
-    "should treat a credentials file that can't be checked as missing",
-    () =>
-      Effect.gen(function* () {
-        const doubles = makeDoubles();
-        doubles.exists.mockReturnValue(Effect.fail("denied") as never);
-
-        const failure = yield* handleGmailCommand(
-          senders,
-          Option.some(credentials),
-          db,
-          token,
-          Option.none(),
-        ).pipe(provideDoubles(doubles, []), Effect.flip);
-
-        expect(failure._tag).toBe("CredentialsNotFoundError");
       }),
   );
 
@@ -327,15 +399,16 @@ describe("handleGmailCommand", () => {
         const failure = yield* handleGmailCommand(
           senders,
           Option.some(credentials),
-          db,
-          token,
+          Option.some(db),
+          Option.some(token),
           Option.none(),
+          false,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(failure).toStrictEqual(error);
         expect(Runtime.getErrorExitCode(failure)).toBe(41);
         assert.deepStrictEqual((yield* TestConsole.errorLines).slice(-1), [
-          `❌ Could not read credentials file [${credentials}] (bad json). Make sure it is a Google OAuth client JSON file.`,
+          `❌ Could not read OAuth2 credentials file [${credentials}] (bad json). Make sure it is a Google OAuth client JSON file.`,
         ]);
       }),
   );
@@ -344,15 +417,19 @@ describe("handleGmailCommand", () => {
     "should fail with a distinct exit code on an authorization failure after logging it",
     () =>
       Effect.gen(function* () {
-        const error = new GmailAuthError({ cause: new Error("invalid_grant") });
+        const error = new GmailAuthError({
+          tokenPath: token,
+          cause: new Error("invalid_grant"),
+        });
         const doubles = makeDoubles({ authorize: () => Effect.fail(error) });
 
         const failure = yield* handleGmailCommand(
           senders,
           Option.some(credentials),
-          db,
-          token,
+          Option.some(db),
+          Option.some(token),
           Option.none(),
+          false,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(failure).toStrictEqual(error);
@@ -375,9 +452,10 @@ describe("handleGmailCommand", () => {
         const failure = yield* handleGmailCommand(
           senders,
           Option.some(credentials),
-          db,
-          token,
+          Option.some(db),
+          Option.some(token),
           Option.none(),
+          false,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(failure).toStrictEqual(error);
@@ -401,9 +479,10 @@ describe("handleGmailCommand", () => {
         const failure = yield* handleGmailCommand(
           senders,
           Option.some(credentials),
-          db,
-          token,
+          Option.some(db),
+          Option.some(token),
           Option.none(),
+          false,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(doubles.saveEmails).not.toHaveBeenCalled();
@@ -428,9 +507,10 @@ describe("handleGmailCommand", () => {
         const failure = yield* handleGmailCommand(
           senders,
           Option.some(credentials),
-          db,
-          token,
+          Option.some(db),
+          Option.some(token),
           Option.none(),
+          false,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(doubles.authorize).not.toHaveBeenCalled();
@@ -456,9 +536,10 @@ describe("handleGmailCommand", () => {
         const failure = yield* handleGmailCommand(
           senders,
           Option.some(credentials),
-          db,
-          token,
+          Option.some(db),
+          Option.some(token),
           Option.some(FilePath.make("output")),
+          false,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(failure).toStrictEqual(
