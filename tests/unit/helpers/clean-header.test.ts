@@ -7,6 +7,6 @@ describe("cleanHeader", () => {
   });
 
   it("should remove characters that don't belong in a file", () => {
-    expect(cleanHeader("a\u0000b\ufffdc")).toBe("abc");
+    expect(cleanHeader("a\u0000b\u001bc")).toBe("abc");
   });
 });

@@ -10,15 +10,17 @@ describe("cleanContent", () => {
     expect(cleanContent("a\u0000b\u0008c\u001fd\u007fe\u009ff")).toBe("abcdef");
   });
 
-  it("should remove replacement characters, byte order marks, and noncharacters", () => {
-    expect(cleanContent("a\ufffdb\ufeffc\ufffed\uffffe")).toBe("abcde");
+  it("should remove terminal escape sequences' escape character", () => {
+    expect(cleanContent("a\u001b[31mb")).toBe("a[31mb");
   });
 
-  it("should remove lone surrogates", () => {
-    expect(cleanContent("a\ud800b\udc00c")).toBe("abc");
+  it("should keep replacement characters, byte order marks, and noncharacters", () => {
+    expect(cleanContent("a\ufffdb\ufeffc\uffffd")).toBe(
+      "a\ufffdb\ufeffc\uffffd",
+    );
   });
 
-  it("should keep valid surrogate pairs", () => {
-    expect(cleanContent("a\ud83d\ude00b")).toBe("a\ud83d\ude00b");
+  it("should keep non-ASCII text", () => {
+    expect(cleanContent("Café — 日本 😀")).toBe("Café — 日本 😀");
   });
 });

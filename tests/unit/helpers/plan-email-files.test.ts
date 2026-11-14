@@ -33,13 +33,19 @@ describe("planEmailFiles", () => {
       {
         name: "Hello.html",
         content:
-          "<!-- From: Ann <ann@example.com> -->\n" +
+          "\ufeff<!-- From: Ann <ann@example.com> -->\n" +
           "<!-- To: Bob <bob@example.com> -->\n" +
           "<!-- Subject: Hello -->\n" +
           "<!-- Received: 2026-01-02T03:04:05.000Z -->\n" +
           "<p>Hi</p>",
       },
     ]);
+  });
+
+  it("should not start a text file with a byte order mark", () => {
+    const [file] = planEmailFiles([makeEmail({})]);
+
+    expect(file?.content.startsWith("\ufeff")).toBe(false);
   });
 
   it("should plan a text file for an email with both bodies", () => {
