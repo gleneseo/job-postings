@@ -33,6 +33,20 @@ const CredentialsFile = Schema.Union([
   Schema.Struct({ web: ClientSecrets }),
 ]);
 
+const NullableString = Schema.optionalKey(Schema.NullOr(Schema.String));
+
+/**
+ * The cached OAuth token, as written after the browser consent flow
+ */
+const Token = Schema.Struct({
+  access_token: NullableString,
+  refresh_token: NullableString,
+  expiry_date: Schema.optionalKey(Schema.NullOr(Schema.Number)),
+  token_type: NullableString,
+  id_token: NullableString,
+  scope: Schema.optionalKey(Schema.String),
+});
+
 const person = (list: AddressObject | undefined) => {
   const first = list?.value[0];
   return { name: first?.name ?? "", email: first?.address ?? "" };
@@ -97,10 +111,9 @@ class GmailTools extends Context.Service<
       const readCredentials = (credentialsPath: typeof FilePath.Type) =>
         Effect.gen(function* () {
           const text = yield* fs.readFileString(credentialsPath);
-          const json: unknown = yield* Effect.try(
-            () => JSON.parse(text) as unknown,
-          );
-          const keys = yield* Schema.decodeUnknownEffect(CredentialsFile)(json);
+          const keys = yield* Schema.decodeUnknownEffect(
+            Schema.fromJsonString(CredentialsFile),
+          )(text);
           return "installed" in keys ? keys.installed : keys.web;
         }).pipe(
           Effect.mapError(
@@ -110,15 +123,21 @@ class GmailTools extends Context.Service<
           Effect.withSpan("gmail-tools.read-credentials"),
         );
 
-      /** Reads the cached token, or `none` if there is none yet */
+      /**
+       * Reads the cached token, or `none` if there is none yet; a token file
+       * that is not valid JSON or not shaped like a token fails with a
+       * `SchemaError`
+       */
       const readToken = (tokenPath: typeof FilePath.Type) =>
         fs.readFileString(tokenPath).pipe(
-          Effect.map((text) =>
-            Option.some(JSON.parse(text) as Auth.Credentials),
+          Effect.flatMap(
+            Schema.decodeUnknownEffect(Schema.fromJsonString(Token)),
           ),
-          Effect.catchIf(
-            (error) => error.reason._tag === "NotFound",
-            () => Effect.succeed(Option.none<Auth.Credentials>()),
+          Effect.map(Option.some),
+          Effect.catchReason(
+            "PlatformError",
+            "NotFound",
+            () => Effect.succeedNone,
           ),
         );
 
