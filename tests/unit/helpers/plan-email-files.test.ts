@@ -32,7 +32,12 @@ describe("planEmailFiles", () => {
     ).toStrictEqual([
       {
         name: "Hello.html",
-        content: "<!-- Received: 2026-01-02T03:04:05.000Z -->\n<p>Hi</p>",
+        content:
+          "<!-- From: Ann <ann@example.com> -->\n" +
+          "<!-- To: Bob <bob@example.com> -->\n" +
+          "<!-- Subject: Hello -->\n" +
+          "<!-- Received: 2026-01-02T03:04:05.000Z -->\n" +
+          "<p>Hi</p>",
       },
     ]);
   });
@@ -71,6 +76,20 @@ describe("planEmailFiles", () => {
 
     expect(file?.content).toContain("From: A B <a@b>\n");
     expect(file?.content).toContain("Subject: Hi Bcc: x\n");
+  });
+
+  it("should keep header comments in an html file from closing early", () => {
+    const [file] = planEmailFiles([
+      makeEmail({
+        subject: "Apply now --> <script>",
+        textBody: "",
+        htmlBody: "<p>Hi</p>",
+      }),
+    ]);
+
+    expect(file?.content).toContain(
+      "<!-- Subject: Apply now - -> <script> -->\n",
+    );
   });
 
   it("should not modify the emails it is given", () => {

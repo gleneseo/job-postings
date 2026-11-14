@@ -136,7 +136,7 @@ npm start -- gmail --sender jobs@example.com --output=./emails
 
 The first run opens your browser to a Google consent page. Choose the test user, click **Advanced → Go to <app name> (unsafe)** past the "Google hasn't verified this app" warning (expected, since you created the app), and approve read-only access. The token is then cached, so later runs don't open the browser. While the consent screen is in "Testing" status, Google expires the token after about 7 days; delete the token file and run again to re-authorize.
 
-Saved files have `From`, `To`, `Subject`, and `Received` headers followed by the plain-text body. Control characters, replacement characters, lone surrogates, and byte order marks are stripped, and line breaks in header values are collapsed. If two emails share a subject, the later one's file name gets its Gmail message ID appended.
+Saved files have `From`, `To`, `Subject`, and `Received` headers followed by the plain-text body. HTML-only emails keep their HTML body and put the same headers in HTML comments at the top of the file, with any `--` in a header value separated (`- -`) so it can't end the comment. Control characters, replacement characters, lone surrogates, and byte order marks are stripped, and line breaks in header values are collapsed. If two emails share a subject, the later one's file name gets its Gmail message ID appended.
 
 ### Running the compiled CLI
 
