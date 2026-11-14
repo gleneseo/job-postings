@@ -36,7 +36,7 @@ The `job-postings` subcommand authenticates as a Google Cloud service account, s
 4. Open the new service account, go to the **Keys** tab, click **Add Key → Create new key**, choose **JSON**, and download it. Store this file somewhere safe outside version control — it grants access to anything shared with the service account.
 5. Copy the service account's email address (looks like `<name>@<project-id>.iam.gserviceaccount.com`, visible on the service account's details page). In Google Drive, share the folder containing the target sheet with that email address, granting at least **Viewer** access.
 
-With that done, save the key file where `job-postings` looks for it by default, or pass its path with `--key-file-path` (see [Usage](#usage)).
+With that done, save the key file where `job-postings` looks for it by default, or pass its path with `--key` (see [Usage](#usage)).
 
 ## Google OAuth client setup
 
@@ -69,13 +69,13 @@ npm start -- job-postings
 
 An ASCII banner prints before the command runs, but only on an interactive terminal (stdout is a TTY) — it's skipped when output is piped, redirected, or otherwise non-interactive, so it doesn't clutter scripted or CI runs. Passing `--quiet` also suppresses it. Every subcommand, and the bare `gleneseo-helpers` root command (which accepts its own `--quiet`/`-q`), prints the same banner; the `help` subcommand always shows it on a TTY.
 
-**Key file lookup.** If `--key-file-path` is given, that file is used and the command fails if it does not exist. Otherwise the command looks in the well-known location `gleneseo-helpers/job-postings.json` under `$XDG_CONFIG_HOME`, falling back to `~/.config` when `XDG_CONFIG_HOME` is unset, empty, or not an absolute path, and fails if no file exists there. Only regular files count. The `gleneseo-helpers` directory is shared by the other subcommands for their own configuration; `gmail` looks for its OAuth2 credentials file the same way, with `--credentials` and `gleneseo-helpers/gmail.json`.
+**Key file lookup.** If `--key` is given, that file is used and the command fails if it does not exist. Otherwise the command looks in the well-known location `gleneseo-helpers/job-postings.json` under `$XDG_CONFIG_HOME`, falling back to `~/.config` when `XDG_CONFIG_HOME` is unset, empty, or not an absolute path, and fails if no file exists there. Only regular files count. The `gleneseo-helpers` directory is shared by the other subcommands for their own configuration; `gmail` looks for its OAuth2 credentials file the same way, with `--credentials` and `gleneseo-helpers/gmail.json`.
 
 Progress messages are logged to standard error, keeping standard out free for the CSV data.
 
 | Argument/Flag         | Description                                                   | Default                              |
 | --------------------- | ------------------------------------------------------------- | ------------------------------------ |
-| `--key-file-path`     | Path to the Google service account JSON key file              | `gleneseo-helpers/job-postings.json` |
+| `--key`, `-k`         | Path to the Google service account JSON key file              | `gleneseo-helpers/job-postings.json` |
 | `--folder-name`       | The Google Drive folder that contains the sheet file          | `Claude`                             |
 | `--file-name`         | The sheet file name                                           | `Job Postings`                       |
 | `--sheet-index`, `-i` | The 0-based index of the target sheet                         | `0`                                  |
@@ -85,7 +85,7 @@ Progress messages are logged to standard error, keeping standard out free for th
 For example, to read the second sheet of a file named `Applications` in a folder named `2026 Search`, and redirect the CSV to `applications.csv`:
 
 ```sh
-npm start -- job-postings --key-file-path ./key.json --folder-name "2026 Search" --file-name Applications --sheet-index 1 > applications.csv
+npm start -- job-postings --key ./key.json --folder-name "2026 Search" --file-name Applications --sheet-index 1 > applications.csv
 ```
 
 Or pipe it directly into another CLI application:
@@ -144,7 +144,7 @@ Saved files have `From`, `To`, `Subject`, and `Received` headers followed by the
 
 ```sh
 npm run build:tsc
-node dist/src/index.js job-postings --key-file-path ./key.json
+node dist/src/index.js job-postings --key ./key.json
 ```
 
 The package also declares a `gleneseo-helpers` bin pointing at that same compiled entry point (`dist/src/index.js`), so once it's built, either `npm link` or `npm install -g .` exposes it as a `gleneseo-helpers` command:
@@ -152,7 +152,7 @@ The package also declares a `gleneseo-helpers` bin pointing at that same compile
 ```sh
 npm run build:tsc
 npm link
-gleneseo-helpers job-postings --key-file-path ./key.json
+gleneseo-helpers job-postings --key ./key.json
 ```
 
 All flags from the table above work the same way regardless of how the CLI is invoked.
@@ -286,14 +286,14 @@ The CLI's spans (see [`Effect.withSpan`](https://effect.website)) only export on
 - `npm run start:env` — loads [`.env.example`](.env.example) directly via Node's `--env-file` flag, no setup required:
 
   ```sh
-  npm run start:env -- job-postings --key-file-path ./key.json
+  npm run start:env -- job-postings --key ./key.json
   ```
 
 - Your own `.env` — copy `.env.example` to `.env` (customize it if your collector isn't on the defaults), then load it the same way:
 
   ```sh
   cp .env.example .env
-  npx tsx --env-file=.env src/index.ts job-postings --key-file-path ./key.json
+  npx tsx --env-file=.env src/index.ts job-postings --key ./key.json
   ```
 
 - Inline environment variables:

@@ -6,8 +6,9 @@ import FileName from "../../helpers/file-name.js";
 import SheetIndex from "../../helpers/sheet-index.js";
 import TimeoutSeconds from "../../helpers/timeout-seconds.js";
 
-const keyFilePath = Flag.File("key-file-path").pipe(
+const key = Flag.File("key").pipe(
   Flag.withSchema(FilePath),
+  Flag.withAlias("k"),
   Flag.optional,
   Flag.withDescription(
     "The path to the JSON key file (default: gleneseo-helpers/job-postings.json in $XDG_CONFIG_HOME, or ~/.config if unset)",
@@ -58,16 +59,16 @@ const timeoutSeconds = Flag.Int("timeout").pipe(
 const jobPostingsCommand = Command.make(
   "job-postings",
   {
-    keyFilePath,
+    key,
     folderName,
     fileName,
     sheetIndex,
     quiet,
     timeoutSeconds,
   },
-  ({ keyFilePath, folderName, fileName, sheetIndex, quiet, timeoutSeconds }) =>
+  ({ key, folderName, fileName, sheetIndex, quiet, timeoutSeconds }) =>
     handleJobPostingsCommand(
-      keyFilePath,
+      key,
       folderName,
       fileName,
       sheetIndex,
