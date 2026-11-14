@@ -14,6 +14,7 @@ const senders = Flag.String("sender").pipe(
 
 const credentials = Flag.File("credentials").pipe(
   Flag.withSchema(FilePath),
+  Flag.withAlias("c"),
   Flag.optional,
   Flag.withDescription(
     "The path to the OAuth2 credentials JSON file (default: gleneseo-helpers/gmail.json in $XDG_CONFIG_HOME, or ~/.config if unset)",
