@@ -61,7 +61,7 @@ If you used the standalone `gmail-downloader` application, move its `access.json
 
 ### `job-postings`
 
-Locates a Google Sheet in Drive by folder and file name, sorts its rows by `Last Contact` date (undated rows first, ties broken alphabetically by `Company`), and prints the result to standard out as CSV, so it can be redirected to a file or piped into another CLI. If the target tab has no rows, the subcommand exits with `NoTabDataError` (see [Exit codes](#exit-codes)) instead of printing a CSV.
+Locates a Google Sheet in Drive by folder and file name, sorts its rows by `Last Contact` date (undated rows first, then rows whose date can't be read, then dated rows oldest first; ties broken lexicographically by `Company`, ignoring case), and prints the result to standard out as CSV, so it can be redirected to a file or piped into another CLI. If the target tab has no rows, the subcommand exits with `NoTabDataError` (see [Exit codes](#exit-codes)) instead of printing a CSV.
 
 ```sh
 npm start -- job-postings

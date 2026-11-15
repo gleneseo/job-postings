@@ -1,3 +1,4 @@
+import { Array, Order } from "effect";
 import cleanContent from "./clean-content.js";
 import cleanHeader from "./clean-header.js";
 import type Email from "./email.js";
@@ -24,32 +25,33 @@ const UTF8_BOM = "\ufeff";
  */
 const planEmailFiles = (emails: readonly (typeof Email.Type)[]) => {
   const used = new Set<string>();
-  return [...emails]
-    .sort((a, b) => a.id.localeCompare(b.id))
-    .map((email) => {
-      const htmlOnly =
-        email.textBody.trim() === "" && email.htmlBody.trim() !== "";
-      const extension = htmlOnly ? "html" : "txt";
-      const stem = fileStem(email.subject);
-      let name = `${stem}.${extension}`;
-      if (used.has(name)) {
-        name = `${stem} (${email.id}).${extension}`;
-      }
-      used.add(name);
+  return Array.sort(
+    emails,
+    Order.mapInput(Order.String, (email: typeof Email.Type) => email.id),
+  ).map((email) => {
+    const htmlOnly =
+      email.textBody.trim() === "" && email.htmlBody.trim() !== "";
+    const extension = htmlOnly ? "html" : "txt";
+    const stem = fileStem(email.subject);
+    let name = `${stem}.${extension}`;
+    if (used.has(name)) {
+      name = `${stem} (${email.id}).${extension}`;
+    }
+    used.add(name);
 
-      const headers = [
-        `From: ${cleanHeader(email.from.name)} <${cleanHeader(email.from.email)}>`,
-        `To: ${cleanHeader(email.to.name)} <${cleanHeader(email.to.email)}>`,
-        `Subject: ${cleanHeader(email.subject)}`,
-        `Received: ${email.receivedAt}`,
-      ];
-      const content = htmlOnly
-        ? UTF8_BOM +
-          headers.map((header) => `${htmlComment(header)}\n`).join("") +
-          cleanContent(email.htmlBody)
-        : `${headers.join("\n")}\n\n${cleanContent(email.textBody)}`;
-      return { name, content };
-    });
+    const headers = [
+      `From: ${cleanHeader(email.from.name)} <${cleanHeader(email.from.email)}>`,
+      `To: ${cleanHeader(email.to.name)} <${cleanHeader(email.to.email)}>`,
+      `Subject: ${cleanHeader(email.subject)}`,
+      `Received: ${email.receivedAt}`,
+    ];
+    const content = htmlOnly
+      ? UTF8_BOM +
+        headers.map((header) => `${htmlComment(header)}\n`).join("") +
+        cleanContent(email.htmlBody)
+      : `${headers.join("\n")}\n\n${cleanContent(email.textBody)}`;
+    return { name, content };
+  });
 };
 
 export default planEmailFiles;
