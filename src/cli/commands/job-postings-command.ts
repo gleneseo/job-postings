@@ -5,7 +5,7 @@ import FolderName from "../../helpers/folder-name.js";
 import FileName from "../../helpers/file-name.js";
 import TabIndex from "../../helpers/tab-index.js";
 import TimeoutSeconds from "../../helpers/timeout-seconds.js";
-import timeoutFlag from "../timeout-flag.js";
+import timeoutFlag from "./helpers/timeout-flag.js";
 
 const key = Flag.File("key").pipe(
   Flag.withSchema(FilePath),

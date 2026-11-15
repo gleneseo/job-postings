@@ -1,5 +1,5 @@
 import { Flag } from "effect/cli";
-import TimeoutSeconds from "../helpers/timeout-seconds.js";
+import TimeoutSeconds from "../../../helpers/timeout-seconds.js";
 
 /**
  * Builds a Helper's `--timeout` flag: the network request timeout, in whole

@@ -3,7 +3,7 @@ import handleGmailCommand from "../command-handlers/handle-gmail-command.js";
 import FilePath from "../../helpers/file-path.js";
 import Sender from "../../helpers/sender.js";
 import TimeoutSeconds from "../../helpers/timeout-seconds.js";
-import timeoutFlag from "../timeout-flag.js";
+import timeoutFlag from "./helpers/timeout-flag.js";
 
 const senders = Flag.String("sender").pipe(
   Flag.withSchema(Sender),
