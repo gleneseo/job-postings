@@ -149,12 +149,12 @@ class GoogleTools extends Context.Service<
           }),
       ).pipe(Effect.withSpan("google-tools.get-auth"));
 
-    const getFolders = (
+    const getFolders = Effect.fn("google-tools.get-folders")(function* (
       auth: Auth.GoogleAuth,
       folderName: typeof FolderName.Type,
       timeout: Duration.Duration,
-    ) =>
-      tryRequest({
+    ) {
+      return yield* tryRequest({
         try: () =>
           google.drive({ version: "v3", auth }).files.list({
             q: `name = "${folderName}" and mimeType = "application/vnd.google-apps.folder" and trashed = false`,
@@ -164,10 +164,8 @@ class GoogleTools extends Context.Service<
         label: FOLDER_SEARCH,
         toError: (cause) => new FolderSearchError({ cause }),
         timeout,
-      }).pipe(
-        Effect.map(({ data }) => orEmptyArray(data.files)),
-        Effect.withSpan("google-tools.get-folders"),
-      );
+      }).pipe(Effect.map(({ data }) => orEmptyArray(data.files)));
+    });
 
     const getFolder = Effect.fn("google-tools.get-folder")(function* (
       auth: Auth.GoogleAuth,
@@ -187,13 +185,13 @@ class GoogleTools extends Context.Service<
       );
     });
 
-    const getFiles = (
+    const getFiles = Effect.fn("google-tools.get-files")(function* (
       auth: Auth.GoogleAuth,
       fileName: typeof FileName.Type,
       folderId: typeof FolderId.Type,
       timeout: Duration.Duration,
-    ) =>
-      tryRequest({
+    ) {
+      return yield* tryRequest({
         try: () =>
           google.drive({ version: "v3", auth }).files.list({
             q: `name = "${fileName}" and mimeType = "application/vnd.google-apps.spreadsheet" and '${folderId}' in parents and trashed = false`,
@@ -203,10 +201,8 @@ class GoogleTools extends Context.Service<
         label: FILE_SEARCH,
         toError: (cause) => new FileSearchError({ cause }),
         timeout,
-      }).pipe(
-        Effect.map(({ data }) => orEmptyArray(data.files)),
-        Effect.withSpan("google-tools.get-files"),
-      );
+      }).pipe(Effect.map(({ data }) => orEmptyArray(data.files)));
+    });
 
     const getFile = Effect.fn("google-tools.get-file")(function* (
       auth: Auth.GoogleAuth,
