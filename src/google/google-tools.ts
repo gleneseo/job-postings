@@ -137,8 +137,10 @@ class GoogleTools extends Context.Service<
   }
 >()("@app/GoogleTools") {
   static readonly layer = Layer.sync(GoogleTools, () => {
-    const getAuth = (keyFilePath: typeof FilePath.Type) =>
-      Effect.sync(
+    const getAuth = Effect.fn("google-tools.get-auth")(function* (
+      keyFilePath: typeof FilePath.Type,
+    ) {
+      return yield* Effect.sync(
         () =>
           new google.auth.GoogleAuth({
             keyFile: keyFilePath,
@@ -147,7 +149,8 @@ class GoogleTools extends Context.Service<
               "https://www.googleapis.com/auth/drive.readonly",
             ],
           }),
-      ).pipe(Effect.withSpan("google-tools.get-auth"));
+      );
+    });
 
     const getFolders = Effect.fn("google-tools.get-folders")(function* (
       auth: Auth.GoogleAuth,
