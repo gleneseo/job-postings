@@ -2,6 +2,7 @@ import { Command, Flag } from "effect/cli";
 import handleGmailCommand from "../command-handlers/handle-gmail-command.js";
 import FilePath from "../../helpers/file-path.js";
 import Sender from "../../helpers/sender.js";
+import TimeoutSeconds from "../../helpers/timeout-seconds.js";
 
 const senders = Flag.String("sender").pipe(
   Flag.withSchema(Sender),
@@ -56,11 +57,31 @@ const quiet = Flag.Boolean("quiet").pipe(
   ),
 );
 
+const timeoutSeconds = Flag.Int("timeout").pipe(
+  Flag.filter(
+    (n) => n > 0,
+    (n) => `--timeout must be greater than 0 seconds (got ${n.toString()})`,
+  ),
+  Flag.withSchema(TimeoutSeconds),
+  Flag.withDefault(TimeoutSeconds.make(10)),
+  Flag.withDescription(
+    "Network request timeout, in seconds, for each Gmail API call (default: 10)",
+  ),
+);
+
 const gmailCommand = Command.make(
   "gmail",
-  { senders, credentials, database, token, output, quiet },
-  ({ senders, credentials, database, token, output, quiet }) =>
-    handleGmailCommand(senders, credentials, database, token, output, quiet),
+  { senders, credentials, database, token, output, quiet, timeoutSeconds },
+  ({ senders, credentials, database, token, output, quiet, timeoutSeconds }) =>
+    handleGmailCommand(
+      senders,
+      credentials,
+      database,
+      token,
+      output,
+      quiet,
+      timeoutSeconds,
+    ),
 ).pipe(
   Command.withDescription(
     "Download inbox emails from the given senders into SQLite and print them as a table",

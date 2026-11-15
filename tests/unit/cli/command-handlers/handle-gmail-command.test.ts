@@ -1,6 +1,7 @@
 import { assert, describe, expect, it, vi } from "@effect/vitest";
 import {
   Console,
+  Duration,
   Effect,
   FileSystem,
   Layer,
@@ -27,6 +28,7 @@ import GmailTools from "../../../../src/gmail/gmail-tools.js";
 import type Email from "../../../../src/helpers/email.js";
 import FilePath from "../../../../src/helpers/file-path.js";
 import Sender from "../../../../src/helpers/sender.js";
+import TimeoutSeconds from "../../../../src/helpers/timeout-seconds.js";
 
 const fakeAuth = {} as unknown as Auth.OAuth2Client;
 const credentials = FilePath.make("/secrets/client.json");
@@ -35,6 +37,8 @@ const token = FilePath.make("/data/token.json");
 const wellKnown = (fileName: string) =>
   FilePath.make(`/config/gleneseo-helpers/${fileName}`);
 const senders = [Sender.make("example.com")];
+const timeoutSeconds = TimeoutSeconds.make(30);
+const timeout = Duration.seconds(timeoutSeconds);
 
 const makeEmail = (id: string, receivedAt: string): typeof Email.Type => ({
   id,
@@ -188,6 +192,7 @@ describe("handleGmailCommand", () => {
           Option.some(token),
           Option.none(),
           false,
+          timeoutSeconds,
         ).pipe(provideDoubles(doubles, tables));
 
         expect(doubles.resolve).toHaveBeenCalledExactlyOnceWith(
@@ -201,10 +206,13 @@ describe("handleGmailCommand", () => {
         expect(doubles.listMessageIds).toHaveBeenCalledExactlyOnceWith(
           fakeAuth,
           "in:inbox from:example.com",
+          timeout,
         );
-        expect(doubles.fetchEmails).toHaveBeenCalledExactlyOnceWith(fakeAuth, [
-          "new",
-        ]);
+        expect(doubles.fetchEmails).toHaveBeenCalledExactlyOnceWith(
+          fakeAuth,
+          ["new"],
+          timeout,
+        );
         expect(doubles.saveEmails).toHaveBeenCalledExactlyOnceWith(db, [
           newEmail,
         ]);
@@ -241,12 +249,14 @@ describe("handleGmailCommand", () => {
         Option.some(token),
         Option.none(),
         false,
+        timeoutSeconds,
       ).pipe(provideDoubles(doubles, tables));
 
       assert.deepStrictEqual(tables, []);
       expect(doubles.listMessageIds).toHaveBeenCalledExactlyOnceWith(
         fakeAuth,
         "in:inbox",
+        timeout,
       );
     }),
   );
@@ -264,6 +274,7 @@ describe("handleGmailCommand", () => {
           Option.none(),
           Option.none(),
           false,
+          timeoutSeconds,
         ).pipe(provideDoubles(doubles, []));
 
         expect(doubles.resolve).toHaveBeenCalledExactlyOnceWith(Option.none());
@@ -298,6 +309,7 @@ describe("handleGmailCommand", () => {
             Option.some(token),
             Option.none(),
             false,
+            timeoutSeconds,
           ).pipe(provideDoubles(makeDoubles(), [])),
         );
 
@@ -320,6 +332,7 @@ describe("handleGmailCommand", () => {
             Option.some(token),
             Option.some(FilePath.make("output")),
             true,
+            timeoutSeconds,
           ).pipe(provideDoubles(makeDoubles(), tables)),
         );
 
@@ -342,6 +355,7 @@ describe("handleGmailCommand", () => {
           Option.some(token),
           Option.some(FilePath.make("output")),
           false,
+          timeoutSeconds,
         ).pipe(provideDoubles(doubles, []));
 
         expect(doubles.makeDirectory).toHaveBeenCalledExactlyOnceWith(
@@ -375,6 +389,7 @@ describe("handleGmailCommand", () => {
         Option.some(token),
         Option.some(FilePath.make("output")),
         false,
+        timeoutSeconds,
       ).pipe(provideDoubles(doubles, []));
 
       expect(doubles.makeDirectory).not.toHaveBeenCalled();
@@ -401,6 +416,7 @@ describe("handleGmailCommand", () => {
           Option.some(token),
           Option.none(),
           false,
+          timeoutSeconds,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(doubles.getSavedIds).not.toHaveBeenCalled();
@@ -430,6 +446,7 @@ describe("handleGmailCommand", () => {
           Option.some(token),
           Option.none(),
           false,
+          timeoutSeconds,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(doubles.getSavedIds).not.toHaveBeenCalled();
@@ -458,6 +475,7 @@ describe("handleGmailCommand", () => {
           Option.some(token),
           Option.none(),
           false,
+          timeoutSeconds,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(doubles.getSavedIds).not.toHaveBeenCalled();
@@ -485,6 +503,7 @@ describe("handleGmailCommand", () => {
           Option.some(token),
           Option.none(),
           false,
+          timeoutSeconds,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(failure).toStrictEqual(error);
@@ -512,6 +531,7 @@ describe("handleGmailCommand", () => {
           Option.some(token),
           Option.none(),
           false,
+          timeoutSeconds,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(doubles.saveEmails).not.toHaveBeenCalled();
@@ -540,6 +560,7 @@ describe("handleGmailCommand", () => {
           Option.some(token),
           Option.none(),
           false,
+          timeoutSeconds,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(doubles.authorize).toHaveBeenCalledOnce();
@@ -575,6 +596,7 @@ describe("handleGmailCommand", () => {
           Option.some(token),
           Option.some(FilePath.make("output")),
           false,
+          timeoutSeconds,
         ).pipe(provideDoubles(doubles, []), Effect.flip);
 
         expect(failure).toStrictEqual(
