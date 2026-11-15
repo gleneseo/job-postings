@@ -1,4 +1,4 @@
-import { Array, Cause, Context, Duration, Effect, Layer, Option } from "effect";
+import { Array, Context, Duration, Effect, Layer, Option } from "effect";
 import FilePath from "../helpers/file-path.js";
 import { Auth, drive_v3, google } from "googleapis";
 import FolderName from "../helpers/folder-name.js";
@@ -16,6 +16,13 @@ import TabsFetchError from "./tabs-fetch-error.js";
 import InvalidTabIndexError from "./invalid-tab-index-error.js";
 import TabValuesFetchError from "./tab-values-fetch-error.js";
 import orEmptyArray from "../helpers/or-empty-array.js";
+import RequestLabel from "../helpers/request-label.js";
+import tryRequest from "../helpers/try-request.js";
+
+const FOLDER_SEARCH = RequestLabel.make("Folder search");
+const FILE_SEARCH = RequestLabel.make("File search");
+const TABS_FETCH = RequestLabel.make("Tabs fetch");
+const TAB_VALUES_FETCH = RequestLabel.make("Tab values fetch");
 
 /**
  * A collection of tools from Google
@@ -130,8 +137,10 @@ class GoogleTools extends Context.Service<
   }
 >()("@app/GoogleTools") {
   static readonly layer = Layer.sync(GoogleTools, () => {
-    const getAuth = (keyFilePath: typeof FilePath.Type) =>
-      Effect.sync(
+    const getAuth = Effect.fn("google-tools.get-auth")(function* (
+      keyFilePath: typeof FilePath.Type,
+    ) {
+      return yield* Effect.sync(
         () =>
           new google.auth.GoogleAuth({
             keyFile: keyFilePath,
@@ -140,36 +149,26 @@ class GoogleTools extends Context.Service<
               "https://www.googleapis.com/auth/drive.readonly",
             ],
           }),
-      ).pipe(Effect.withSpan("google-tools.get-auth"));
+      );
+    });
 
-    const getFolders = (
+    const getFolders = Effect.fn("google-tools.get-folders")(function* (
       auth: Auth.GoogleAuth,
       folderName: typeof FolderName.Type,
       timeout: Duration.Duration,
-    ) =>
-      Effect.tryPromise({
+    ) {
+      return yield* tryRequest({
         try: () =>
           google.drive({ version: "v3", auth }).files.list({
             q: `name = "${folderName}" and mimeType = "application/vnd.google-apps.folder" and trashed = false`,
             fields: "files(id, name)",
             pageSize: 10,
           }),
-        catch: (e) => new FolderSearchError({ cause: e }),
-      }).pipe(
-        Effect.map(({ data }) => orEmptyArray(data.files)),
-        Effect.timeoutOrElse({
-          duration: timeout,
-          orElse: () =>
-            Effect.fail(
-              new FolderSearchError({
-                cause: new Cause.TimeoutError(
-                  `Folder search timed out after ${Duration.format(timeout)}`,
-                ),
-              }),
-            ),
-        }),
-        Effect.withSpan("google-tools.get-folders"),
-      );
+        label: FOLDER_SEARCH,
+        toError: (cause) => new FolderSearchError({ cause }),
+        timeout,
+      }).pipe(Effect.map(({ data }) => orEmptyArray(data.files)));
+    });
 
     const getFolder = Effect.fn("google-tools.get-folder")(function* (
       auth: Auth.GoogleAuth,
@@ -189,35 +188,24 @@ class GoogleTools extends Context.Service<
       );
     });
 
-    const getFiles = (
+    const getFiles = Effect.fn("google-tools.get-files")(function* (
       auth: Auth.GoogleAuth,
       fileName: typeof FileName.Type,
       folderId: typeof FolderId.Type,
       timeout: Duration.Duration,
-    ) =>
-      Effect.tryPromise({
+    ) {
+      return yield* tryRequest({
         try: () =>
           google.drive({ version: "v3", auth }).files.list({
             q: `name = "${fileName}" and mimeType = "application/vnd.google-apps.spreadsheet" and '${folderId}' in parents and trashed = false`,
             fields: "files(id, name)",
             pageSize: 10,
           }),
-        catch: (e) => new FileSearchError({ cause: e }),
-      }).pipe(
-        Effect.map(({ data }) => orEmptyArray(data.files)),
-        Effect.timeoutOrElse({
-          duration: timeout,
-          orElse: () =>
-            Effect.fail(
-              new FileSearchError({
-                cause: new Cause.TimeoutError(
-                  `File search timed out after ${Duration.format(timeout)}`,
-                ),
-              }),
-            ),
-        }),
-        Effect.withSpan("google-tools.get-files"),
-      );
+        label: FILE_SEARCH,
+        toError: (cause) => new FileSearchError({ cause }),
+        timeout,
+      }).pipe(Effect.map(({ data }) => orEmptyArray(data.files)));
+    });
 
     const getFile = Effect.fn("google-tools.get-file")(function* (
       auth: Auth.GoogleAuth,
@@ -246,23 +234,12 @@ class GoogleTools extends Context.Service<
     ) {
       const sheets = google.sheets({ version: "v4", auth });
 
-      const availableTabs = yield* Effect.tryPromise({
+      const availableTabs = yield* tryRequest({
         try: () => sheets.spreadsheets.get({ spreadsheetId: fileId }),
-        catch: (e) => new TabsFetchError({ cause: e }),
-      }).pipe(
-        Effect.map(({ data }) => orEmptyArray(data.sheets)),
-        Effect.timeoutOrElse({
-          duration: timeout,
-          orElse: () =>
-            Effect.fail(
-              new TabsFetchError({
-                cause: new Cause.TimeoutError(
-                  `Tabs fetch timed out after ${Duration.format(timeout)}`,
-                ),
-              }),
-            ),
-        }),
-      );
+        label: TABS_FETCH,
+        toError: (cause) => new TabsFetchError({ cause }),
+        timeout,
+      }).pipe(Effect.map(({ data }) => orEmptyArray(data.sheets)));
 
       const targetTab = yield* Array.get(availableTabs, tabIndex).pipe(
         Option.match({
@@ -275,7 +252,7 @@ class GoogleTools extends Context.Service<
         }),
       );
 
-      return yield* Effect.tryPromise({
+      return yield* tryRequest({
         try: () =>
           sheets.spreadsheets.values.get({
             spreadsheetId: fileId,
@@ -284,22 +261,10 @@ class GoogleTools extends Context.Service<
               Option.getOrElse(() => "Sheet1"),
             ),
           }),
-        catch: (e) => new TabValuesFetchError({ tabIndex, cause: e }),
-      }).pipe(
-        Effect.map(({ data }) => orEmptyArray(data.values)),
-        Effect.timeoutOrElse({
-          duration: timeout,
-          orElse: () =>
-            Effect.fail(
-              new TabValuesFetchError({
-                tabIndex,
-                cause: new Cause.TimeoutError(
-                  `Tab values fetch timed out after ${Duration.format(timeout)}`,
-                ),
-              }),
-            ),
-        }),
-      );
+        label: TAB_VALUES_FETCH,
+        toError: (cause) => new TabValuesFetchError({ tabIndex, cause }),
+        timeout,
+      }).pipe(Effect.map(({ data }) => orEmptyArray(data.values)));
     });
 
     return GoogleTools.of({

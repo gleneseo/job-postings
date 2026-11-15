@@ -51,7 +51,7 @@ The test is that searching the repo for the old name finds nothing left over.
 
 ## 7. One home per shape
 
-When the change repeats a logic shape that already exists (the same pipeline, wrapper or message pattern), it reuses or extracts the shared version rather than adding another copy. If the extraction is out of scope, the review names it, and the follow-up goes in a GitHub issue (e.g. #56 for the repeated Google timeout wrapper).
+When the change repeats a logic shape that already exists (the same pipeline, wrapper or message pattern), it reuses or extracts the shared version rather than adding another copy (e.g. `src/helpers/try-request.ts` is the shared request wrapper). If the extraction is out of scope, the review names it, and the follow-up goes in a GitHub issue.
 
 ## 8. Effect failures are `Error`s
 
