@@ -35,11 +35,7 @@ Any `git stash` operation must include untracked files (i.e. pass `-u`/`--includ
 
 ## Coding standards
 
-The review-time coding standards (judgement-call rules) live in `CODING_STANDARDS.md`.
-
-## Test naming
-
-All test labels (e.g. the string passed to `it`/`test`) must start with "should". For example, "should return a truthy value", or "should find a user".
+The review-time coding standards, including test naming, live in `CODING_STANDARDS.md`.
 
 ## Code documentation
 

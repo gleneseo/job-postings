@@ -89,6 +89,6 @@ Plain language features that have no Effect counterpart worth using stay as they
 
 These rules are mechanical and belong in a lint rule or test. That work is tracked in #57. Until it lands, review checks them too:
 
-- Test labels start with "should" (`CLAUDE.md`, Test naming).
+- **Test naming:** every test label (the string passed to `it`, `it.effect` or `test`) starts with "should", e.g. "should return a truthy value" or "should find a user". `describe` labels name the unit under test instead.
 - Code documentation follows TSDoc. A doc string ends in `.` only when it has several phrases, and then every phrase does (`CLAUDE.md`, Code documentation).
 - Unit tests mirror `src/`: `tests/unit/<path>/<name>.test.ts` tests `src/<path>/<name>.ts`.
