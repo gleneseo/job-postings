@@ -1,3 +1,4 @@
+import { Array, Order } from "effect";
 import type Email from "./email.js";
 
 /**
@@ -8,12 +9,16 @@ import type Email from "./email.js";
  * @returns The table rows
  */
 const createEmailTableRows = (emails: readonly (typeof Email.Type)[]) =>
-  [...emails]
-    .sort((a, b) => a.receivedAt.localeCompare(b.receivedAt))
-    .map((email) => ({
-      Received: new Date(email.receivedAt).toLocaleString("sv-SE").slice(0, 16),
-      From: email.from.email,
-      Subject: email.subject,
-    }));
+  Array.sort(
+    emails,
+    Order.mapInput(
+      Order.String,
+      (email: typeof Email.Type) => email.receivedAt,
+    ),
+  ).map((email) => ({
+    Received: new Date(email.receivedAt).toLocaleString("sv-SE").slice(0, 16),
+    From: email.from.email,
+    Subject: email.subject,
+  }));
 
 export default createEmailTableRows;

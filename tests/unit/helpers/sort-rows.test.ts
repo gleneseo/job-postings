@@ -39,7 +39,7 @@ describe("sortRows", () => {
     ]);
   });
 
-  it("should sort rows without a Last Contact date alphabetically by Company", () => {
+  it("should sort rows without a Last Contact date lexicographically by Company", () => {
     const rows = [
       ["Globex", ""],
       ["Acme", ""],
@@ -103,7 +103,7 @@ describe("sortRows", () => {
     ]);
   });
 
-  it("should sort rows with the same Last Contact date alphabetically by Company", () => {
+  it("should sort rows with the same Last Contact date lexicographically by Company", () => {
     const rows = [
       ["Globex", "1/1/2026"],
       ["Acme", "1/1/2026"],
@@ -111,6 +111,43 @@ describe("sortRows", () => {
     expect(sortRows(rows, headers)).toEqual([
       ["Acme", "1/1/2026"],
       ["Globex", "1/1/2026"],
+    ]);
+  });
+
+  it("should ignore case when breaking ties by Company", () => {
+    const rows = [
+      ["cherry", ""],
+      ["Banana", ""],
+      ["apple", ""],
+    ];
+    expect(sortRows(rows, headers)).toEqual([
+      ["apple", ""],
+      ["Banana", ""],
+      ["cherry", ""],
+    ]);
+  });
+
+  it("should keep the input order of Companies that differ only in case", () => {
+    const rows = [
+      ["Apple", ""],
+      ["apple", ""],
+    ];
+    expect(sortRows(rows, headers)).toEqual([
+      ["Apple", ""],
+      ["apple", ""],
+    ]);
+  });
+
+  it("should place rows whose Last Contact date can't be read between undated and dated rows", () => {
+    const rows = [
+      ["Acme", "1/1/2026"],
+      ["Globex", "next week"],
+      ["Initech", ""],
+    ];
+    expect(sortRows(rows, headers)).toEqual([
+      ["Initech", ""],
+      ["Globex", "next week"],
+      ["Acme", "1/1/2026"],
     ]);
   });
 

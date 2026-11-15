@@ -1,3 +1,4 @@
+import { Array } from "effect";
 import type Sender from "./sender.js";
 
 /**
@@ -11,7 +12,11 @@ import type Sender from "./sender.js";
  */
 const buildGmailQuery = (senders: readonly (typeof Sender.Type)[]) => {
   const froms = senders.map((sender) => `from:${sender}`);
-  const filter = froms.length > 1 ? `{${froms.join(" ")}}` : (froms[0] ?? "");
+  const filter = Array.matchLeft(froms, {
+    onEmpty: () => "",
+    onNonEmpty: (first, rest) =>
+      Array.isArrayNonEmpty(rest) ? `{${froms.join(" ")}}` : first,
+  });
   return `in:inbox ${filter}`.trim();
 };
 

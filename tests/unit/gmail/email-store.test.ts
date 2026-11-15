@@ -133,4 +133,60 @@ describe("EmailStore", () => {
         expect(failure.path).toBe(directory);
       }).pipe(Effect.scoped, Effect.provide(TestLayer)),
   );
+
+  it.effect(
+    "should carry the SQLite error as the cause when the database can't be opened",
+    () =>
+      Effect.gen(function* () {
+        const store = yield* EmailStore;
+        const fs = yield* FileSystem.FileSystem;
+        const directory = yield* fs.makeTempDirectoryScoped();
+
+        const failure = yield* store
+          .getSavedIds(FilePath.make(directory))
+          .pipe(Effect.flip);
+
+        expect(failure.cause).toMatchObject({ code: "ERR_SQLITE_ERROR" });
+      }).pipe(Effect.scoped, Effect.provide(TestLayer)),
+  );
+
+  it.effect(
+    "should carry the SQLite error as the cause when a save fails part way",
+    () =>
+      withDbPath((dbPath) =>
+        Effect.gen(function* () {
+          const store = yield* EmailStore;
+          const unbindable = {
+            ...makeEmail("bad"),
+            subject: Symbol("x") as unknown as string,
+          };
+
+          const failure = yield* store
+            .saveEmails(dbPath, [makeEmail("a"), unbindable])
+            .pipe(Effect.flip);
+
+          expect(failure.cause).toBeInstanceOf(TypeError);
+          expect(failure.cause).toMatchObject({
+            code: "ERR_INVALID_ARG_TYPE",
+          });
+        }),
+      ).pipe(Effect.provide(TestLayer)),
+  );
+
+  it.effect(
+    "should fail with an EmailStoreError when the database directory can't be created",
+    () =>
+      Effect.gen(function* () {
+        const store = yield* EmailStore;
+        const fs = yield* FileSystem.FileSystem;
+        const path = yield* Path.Path;
+        const file = yield* fs.makeTempFileScoped();
+        const dbPath = FilePath.make(path.join(file, "nested", "e.sqlite"));
+
+        const failure = yield* store.getSavedIds(dbPath).pipe(Effect.flip);
+
+        expect(failure).toBeInstanceOf(EmailStoreError);
+        expect(failure.path).toBe(dbPath);
+      }).pipe(Effect.scoped, Effect.provide(TestLayer)),
+  );
 });

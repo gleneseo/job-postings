@@ -1,8 +1,18 @@
-import { Context, Effect, FileSystem, Layer, Path } from "effect";
+import { Context, Effect, Exit, FileSystem, Layer, Path } from "effect";
 import { DatabaseSync } from "node:sqlite";
 import EmailStoreError from "./email-store-error.js";
 import type Email from "../helpers/email.js";
 import type FilePath from "../helpers/file-path.js";
+
+/**
+ * Runs a synchronous `node:sqlite` call, failing with an
+ * {@link EmailStoreError} whose cause is exactly what the call throws
+ */
+const attempt = <A>(dbPath: typeof FilePath.Type, evaluate: () => A) =>
+  Effect.try({
+    try: evaluate,
+    catch: (cause) => new EmailStoreError({ path: dbPath, cause }),
+  });
 
 /**
  * The SQLite database of downloaded emails, so later runs only fetch new
@@ -59,18 +69,24 @@ class EmailStore extends Context.Service<
        */
       const withDatabase = <A>(
         dbPath: typeof FilePath.Type,
-        use: (db: DatabaseSync) => A,
+        use: (db: DatabaseSync) => Effect.Effect<A, EmailStoreError>,
       ) =>
         Effect.gen(function* () {
-          yield* fs.makeDirectory(path.dirname(dbPath), { recursive: true });
+          yield* fs
+            .makeDirectory(path.dirname(dbPath), { recursive: true })
+            .pipe(
+              Effect.mapError(
+                (cause) => new EmailStoreError({ path: dbPath, cause }),
+              ),
+            );
           const db = yield* Effect.acquireRelease(
-            Effect.try(() => new DatabaseSync(dbPath)),
+            attempt(dbPath, () => new DatabaseSync(dbPath)),
             (db) =>
               Effect.sync(() => {
                 db.close();
               }),
           );
-          return yield* Effect.try(() => {
+          yield* attempt(dbPath, () => {
             db.exec(`
               CREATE TABLE IF NOT EXISTS emails (
                 gmail_id    TEXT PRIMARY KEY,
@@ -84,27 +100,50 @@ class EmailStore extends Context.Service<
                 received_at TEXT NOT NULL
               )
             `);
-            return use(db);
           });
-        }).pipe(
-          Effect.scoped,
-          Effect.mapError(
-            (cause) => new EmailStoreError({ path: dbPath, cause }),
+          return yield* use(db);
+        }).pipe(Effect.scoped);
+
+      /**
+       * Runs `use` in a transaction, committing it if `use` succeeds and
+       * rolling it back if `use` or the commit fails, dies or is interrupted
+       */
+      const withTransaction = <A>(
+        dbPath: typeof FilePath.Type,
+        db: DatabaseSync,
+        use: Effect.Effect<A, EmailStoreError>,
+      ) => {
+        const exec = (sql: string) =>
+          attempt(dbPath, () => {
+            db.exec(sql);
+          });
+        return exec("BEGIN").pipe(
+          Effect.andThen(
+            use.pipe(
+              Effect.tap(() => exec("COMMIT")),
+              // Runs on any exit, so a defect or interruption also rolls back
+              Effect.onExit((exit) =>
+                Exit.isSuccess(exit) ? Effect.void : exec("ROLLBACK"),
+              ),
+            ),
           ),
         );
+      };
 
       const getSavedIds = Effect.fn("email-store.get-saved-ids")(function* (
         dbPath: typeof FilePath.Type,
       ) {
-        return yield* withDatabase(
-          dbPath,
-          (db) =>
-            new Set(
-              db
-                .prepare("SELECT gmail_id FROM emails")
-                .all()
-                .map((row) => String(row["gmail_id"])),
-            ),
+        return yield* withDatabase(dbPath, (db) =>
+          attempt(
+            dbPath,
+            () =>
+              new Set(
+                db
+                  .prepare("SELECT gmail_id FROM emails")
+                  .all()
+                  .map((row) => String(row["gmail_id"])),
+              ),
+          ),
         );
       });
 
@@ -112,57 +151,58 @@ class EmailStore extends Context.Service<
         dbPath: typeof FilePath.Type,
         emails: readonly (typeof Email.Type)[],
       ) {
-        yield* withDatabase(dbPath, (db) => {
-          const insert = db.prepare(
-            `INSERT OR REPLACE INTO emails
-               (gmail_id, from_name, from_email, to_name, to_email, subject, text_body, html_body, received_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          );
-          db.exec("BEGIN");
-          try {
-            for (const e of emails) {
-              insert.run(
-                e.id,
-                e.from.name,
-                e.from.email,
-                e.to.name,
-                e.to.email,
-                e.subject,
-                e.textBody,
-                e.htmlBody,
-                e.receivedAt,
+        yield* withDatabase(dbPath, (db) =>
+          withTransaction(
+            dbPath,
+            db,
+            attempt(dbPath, () => {
+              const insert = db.prepare(
+                `INSERT OR REPLACE INTO emails
+                   (gmail_id, from_name, from_email, to_name, to_email, subject, text_body, html_body, received_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               );
-            }
-            db.exec("COMMIT");
-          } catch (error) {
-            db.exec("ROLLBACK");
-            throw error;
-          }
-        });
+              for (const e of emails) {
+                insert.run(
+                  e.id,
+                  e.from.name,
+                  e.from.email,
+                  e.to.name,
+                  e.to.email,
+                  e.subject,
+                  e.textBody,
+                  e.htmlBody,
+                  e.receivedAt,
+                );
+              }
+            }),
+          ),
+        );
       });
 
       const getEmailsByIds = Effect.fn("email-store.get-emails-by-ids")(
         function* (dbPath: typeof FilePath.Type, ids: ReadonlySet<string>) {
           return yield* withDatabase(dbPath, (db) =>
-            db
-              .prepare("SELECT * FROM emails")
-              .all()
-              .filter((row) => ids.has(String(row["gmail_id"])))
-              .map((row) => ({
-                id: String(row["gmail_id"]),
-                from: {
-                  name: String(row["from_name"]),
-                  email: String(row["from_email"]),
-                },
-                to: {
-                  name: String(row["to_name"]),
-                  email: String(row["to_email"]),
-                },
-                subject: String(row["subject"]),
-                textBody: String(row["text_body"]),
-                htmlBody: String(row["html_body"]),
-                receivedAt: String(row["received_at"]),
-              })),
+            attempt(dbPath, () =>
+              db
+                .prepare("SELECT * FROM emails")
+                .all()
+                .filter((row) => ids.has(String(row["gmail_id"])))
+                .map((row) => ({
+                  id: String(row["gmail_id"]),
+                  from: {
+                    name: String(row["from_name"]),
+                    email: String(row["from_email"]),
+                  },
+                  to: {
+                    name: String(row["to_name"]),
+                    email: String(row["to_email"]),
+                  },
+                  subject: String(row["subject"]),
+                  textBody: String(row["text_body"]),
+                  htmlBody: String(row["html_body"]),
+                  receivedAt: String(row["received_at"]),
+                })),
+            ),
           );
         },
       );

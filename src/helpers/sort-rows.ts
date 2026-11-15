@@ -1,7 +1,10 @@
+import { Array, Option, Order } from "effect";
+
 /**
- * Sorts data rows by their Last Contact date ascending, placing rows with no
- * date first and breaking ties (including between two undated rows)
- * alphabetically by Company
+ * Sorts data rows by their Last Contact date ascending. Rows with no date
+ * come first, then rows whose date can't be read, then dated rows oldest
+ * first. Ties (including between two undated rows) are broken
+ * lexicographically by Company, ignoring case.
  *
  * @param dataRows - Rows of tab data to sort
  * @param headers - Column headers used to locate the Last Contact and
@@ -9,34 +12,34 @@
  * @returns A new array of rows sorted by Last Contact date
  */
 function sortRows(dataRows: string[][], headers: string[]): string[][] {
-  const lastContactIdx = headers.indexOf("Last Contact");
-  const companyIdx = headers.indexOf("Company");
+  const cellIn = (header: string) => {
+    const index = Array.findFirstIndex(headers, (h) => h === header);
+    return (row: string[]): string =>
+      index.pipe(
+        Option.flatMap((i) => Array.get(row, i)),
+        Option.map((cell) => cell.trim()),
+        Option.getOrElse(() => ""),
+      );
+  };
+  const lastContactOf = cellIn("Last Contact");
+  const companyOf = cellIn("Company");
 
-  const companyOf = (row: string[]): string =>
-    companyIdx >= 0 ? (row[companyIdx] ?? "").trim() : "";
+  const byHasDate = Order.mapInput(
+    Order.Boolean,
+    (row: string[]) => lastContactOf(row) !== "",
+  );
+  const byDate = Order.mapInput(
+    Order.Date,
+    (row: string[]) => new Date(lastContactOf(row)),
+  );
+  const byCompany = Order.mapInput(Order.String, (row: string[]) =>
+    companyOf(row).toLowerCase(),
+  );
 
-  return [...dataRows].sort((a, b) => {
-    const aContact =
-      lastContactIdx >= 0 ? (a[lastContactIdx] ?? "").trim() : "";
-    const bContact =
-      lastContactIdx >= 0 ? (b[lastContactIdx] ?? "").trim() : "";
-    const aHasDate = aContact !== "";
-    const bHasDate = bContact !== "";
-
-    if (!aHasDate && !bHasDate) {
-      return companyOf(a).localeCompare(companyOf(b));
-    }
-    if (!aHasDate) {
-      return -1;
-    }
-    if (!bHasDate) {
-      return 1;
-    }
-
-    const dateDiff =
-      new Date(aContact).getTime() - new Date(bContact).getTime();
-    return dateDiff !== 0 ? dateDiff : companyOf(a).localeCompare(companyOf(b));
-  });
+  return Array.sort(
+    dataRows,
+    Order.combine(Order.combine(byHasDate, byDate), byCompany),
+  );
 }
 
 export default sortRows;
