@@ -61,11 +61,13 @@ Every `Effect.fail` (and `yield* new XError(...)`, or a `catch:` in `Effect.tryP
 - In tests, it is the same tagged error the code under test would raise. When the test needs a stand-in, it uses a small tagged error defined in the test.
 - A failure value that is a string, number, plain object or `undefined` is a violation. So is a bare `new Error(...)` passed to `Effect.fail`. A bare `Error` is fine as the `cause` inside a tagged error.
 
-## 9. Every cast explains itself
+## 9. Every cast in `src` explains itself
 
-A type assertion (`x as T`, `x as unknown as T`, `<T>x`) or a non-null assertion (`x!`) has a comment on the line above it saying why the type system can't prove the type and why the cast is safe. A good example is "googleapis types the client loosely; the test never calls it". `as const` is not a cast and needs no comment.
+In `src`, a type assertion (`x as T`, `x as unknown as T`, `<T>x`) or a non-null assertion (`x!`) has a comment on the line above it saying why the type system can't prove the type and why the cast is safe. A good example is "googleapis types `data.files` loosely; the query's `fields` guarantees `id` and `name`". `as const` is not a cast and needs no comment.
 
-Prefer the alternatives that need no cast: a `Schema` decode, a type guard or `Predicate`, `satisfies`, or a correctly typed test double. A cast whose comment can't name a reason is a sign one of those fits.
+Prefer the alternatives that need no cast: a `Schema` decode, a type guard or `Predicate`, or `satisfies`. A cast whose comment can't name a reason is a sign one of those fits.
+
+Tests are exempt, because their casts usually build test doubles or deliberately malformed inputs.
 
 ## 10. Effect helpers over raw JavaScript
 
