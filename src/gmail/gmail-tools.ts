@@ -59,9 +59,16 @@ const Token = Schema.Struct({
 const nonEmpty = (value: string | null | undefined) =>
   Option.fromNullishOr(value).pipe(Option.filter(String.isNonEmpty));
 
-const person = (list: Option.Option<AddressObject>) =>
-  list.pipe(
-    Option.flatMap((l) => Array.head(l.value)),
+/**
+ * Takes the first address in a parsed `From` or `To` header as an email's
+ * sender or recipient
+ *
+ * @param header - The parsed header, or `none` when the email has none
+ * @returns The address's name and email, each an empty string when missing
+ */
+const firstAddress = (header: Option.Option<AddressObject>) =>
+  header.pipe(
+    Option.flatMap((h) => Array.head(h.value)),
     Option.match({
       onNone: () => ({ name: "", email: "" }),
       onSome: (address) => ({
@@ -265,8 +272,8 @@ class GmailTools extends Context.Service<
                 Effect.try({
                   try: () => ({
                     id,
-                    from: person(Option.fromNullishOr(parsed.from)),
-                    to: person(
+                    from: firstAddress(Option.fromNullishOr(parsed.from)),
+                    to: firstAddress(
                       Option.fromNullishOr(parsed.to).pipe(
                         Option.flatMap((to) => Array.head(Array.ensure(to))),
                       ),
