@@ -1,4 +1,4 @@
-import { Context, Effect, FileSystem, Layer, Path } from "effect";
+import { Context, Effect, Exit, FileSystem, Layer, Path } from "effect";
 import { DatabaseSync } from "node:sqlite";
 import EmailStoreError from "./email-store-error.js";
 import type Email from "../helpers/email.js";
@@ -57,9 +57,9 @@ class EmailStore extends Context.Service<
        * Opens the database for the duration of `use`, creating its directory
        * and table if needed, and closes it afterwards
        */
-      const withDatabase = <A>(
+      const withDatabase = <A, E>(
         dbPath: typeof FilePath.Type,
-        use: (db: DatabaseSync) => A,
+        use: (db: DatabaseSync) => Effect.Effect<A, E>,
       ) =>
         Effect.gen(function* () {
           yield* fs.makeDirectory(path.dirname(dbPath), { recursive: true });
@@ -70,7 +70,7 @@ class EmailStore extends Context.Service<
                 db.close();
               }),
           );
-          return yield* Effect.try(() => {
+          yield* Effect.try(() => {
             db.exec(`
               CREATE TABLE IF NOT EXISTS emails (
                 gmail_id    TEXT PRIMARY KEY,
@@ -84,8 +84,8 @@ class EmailStore extends Context.Service<
                 received_at TEXT NOT NULL
               )
             `);
-            return use(db);
           });
+          return yield* use(db);
         }).pipe(
           Effect.scoped,
           Effect.mapError(
@@ -93,18 +93,44 @@ class EmailStore extends Context.Service<
           ),
         );
 
+      /**
+       * Runs `use` in a transaction, committing it if `use` succeeds and
+       * rolling it back if `use` or the commit fails, dies or is interrupted
+       */
+      const withTransaction = <A, E>(
+        db: DatabaseSync,
+        use: Effect.Effect<A, E>,
+      ) => {
+        const exec = (sql: string) =>
+          Effect.try(() => {
+            db.exec(sql);
+          });
+        return exec("BEGIN").pipe(
+          Effect.andThen(
+            use.pipe(
+              Effect.tap(() => exec("COMMIT")),
+              // Runs on any exit, so a defect or interruption also rolls back
+              Effect.onExit((exit) =>
+                Exit.isSuccess(exit) ? Effect.void : exec("ROLLBACK"),
+              ),
+            ),
+          ),
+        );
+      };
+
       const getSavedIds = Effect.fn("email-store.get-saved-ids")(function* (
         dbPath: typeof FilePath.Type,
       ) {
-        return yield* withDatabase(
-          dbPath,
-          (db) =>
-            new Set(
-              db
-                .prepare("SELECT gmail_id FROM emails")
-                .all()
-                .map((row) => String(row["gmail_id"])),
-            ),
+        return yield* withDatabase(dbPath, (db) =>
+          Effect.try(
+            () =>
+              new Set(
+                db
+                  .prepare("SELECT gmail_id FROM emails")
+                  .all()
+                  .map((row) => String(row["gmail_id"])),
+              ),
+          ),
         );
       });
 
@@ -112,57 +138,57 @@ class EmailStore extends Context.Service<
         dbPath: typeof FilePath.Type,
         emails: readonly (typeof Email.Type)[],
       ) {
-        yield* withDatabase(dbPath, (db) => {
-          const insert = db.prepare(
-            `INSERT OR REPLACE INTO emails
-               (gmail_id, from_name, from_email, to_name, to_email, subject, text_body, html_body, received_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          );
-          db.exec("BEGIN");
-          try {
-            for (const e of emails) {
-              insert.run(
-                e.id,
-                e.from.name,
-                e.from.email,
-                e.to.name,
-                e.to.email,
-                e.subject,
-                e.textBody,
-                e.htmlBody,
-                e.receivedAt,
+        yield* withDatabase(dbPath, (db) =>
+          withTransaction(
+            db,
+            Effect.try(() => {
+              const insert = db.prepare(
+                `INSERT OR REPLACE INTO emails
+                   (gmail_id, from_name, from_email, to_name, to_email, subject, text_body, html_body, received_at)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
               );
-            }
-            db.exec("COMMIT");
-          } catch (error) {
-            db.exec("ROLLBACK");
-            throw error;
-          }
-        });
+              for (const e of emails) {
+                insert.run(
+                  e.id,
+                  e.from.name,
+                  e.from.email,
+                  e.to.name,
+                  e.to.email,
+                  e.subject,
+                  e.textBody,
+                  e.htmlBody,
+                  e.receivedAt,
+                );
+              }
+            }),
+          ),
+        );
       });
 
       const getEmailsByIds = Effect.fn("email-store.get-emails-by-ids")(
         function* (dbPath: typeof FilePath.Type, ids: ReadonlySet<string>) {
           return yield* withDatabase(dbPath, (db) =>
-            db
-              .prepare("SELECT * FROM emails")
-              .all()
-              .filter((row) => ids.has(String(row["gmail_id"])))
-              .map((row) => ({
-                id: String(row["gmail_id"]),
-                from: {
-                  name: String(row["from_name"]),
-                  email: String(row["from_email"]),
-                },
-                to: {
-                  name: String(row["to_name"]),
-                  email: String(row["to_email"]),
-                },
-                subject: String(row["subject"]),
-                textBody: String(row["text_body"]),
-                htmlBody: String(row["html_body"]),
-                receivedAt: String(row["received_at"]),
-              })),
+            Effect.try(() =>
+              db
+                .prepare("SELECT * FROM emails")
+                .all()
+                .filter((row) => ids.has(String(row["gmail_id"])))
+                .map((row) => ({
+                  id: String(row["gmail_id"]),
+                  from: {
+                    name: String(row["from_name"]),
+                    email: String(row["from_email"]),
+                  },
+                  to: {
+                    name: String(row["to_name"]),
+                    email: String(row["to_email"]),
+                  },
+                  subject: String(row["subject"]),
+                  textBody: String(row["text_body"]),
+                  htmlBody: String(row["html_body"]),
+                  receivedAt: String(row["received_at"]),
+                })),
+            ),
           );
         },
       );
