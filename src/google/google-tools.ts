@@ -15,6 +15,7 @@ import FileNotFoundError from "./file-not-found-error.js";
 import TabsFetchError from "./tabs-fetch-error.js";
 import InvalidTabIndexError from "./invalid-tab-index-error.js";
 import TabValuesFetchError from "./tab-values-fetch-error.js";
+import orEmptyArray from "../helpers/or-empty-array.js";
 
 /**
  * A collection of tools from Google
@@ -147,19 +148,15 @@ class GoogleTools extends Context.Service<
       timeout: Duration.Duration,
     ) =>
       Effect.tryPromise({
-        try: async () => {
-          const drive = google.drive({ version: "v3", auth });
-
-          const folderResult = await drive.files.list({
+        try: () =>
+          google.drive({ version: "v3", auth }).files.list({
             q: `name = "${folderName}" and mimeType = "application/vnd.google-apps.folder" and trashed = false`,
             fields: "files(id, name)",
             pageSize: 10,
-          });
-
-          return folderResult.data.files ?? [];
-        },
+          }),
         catch: (e) => new FolderSearchError({ cause: e }),
       }).pipe(
+        Effect.map(({ data }) => orEmptyArray(data.files)),
         Effect.timeoutOrElse({
           duration: timeout,
           orElse: () =>
@@ -199,19 +196,15 @@ class GoogleTools extends Context.Service<
       timeout: Duration.Duration,
     ) =>
       Effect.tryPromise({
-        try: async () => {
-          const drive = google.drive({ version: "v3", auth });
-
-          const searchResult = await drive.files.list({
+        try: () =>
+          google.drive({ version: "v3", auth }).files.list({
             q: `name = "${fileName}" and mimeType = "application/vnd.google-apps.spreadsheet" and '${folderId}' in parents and trashed = false`,
             fields: "files(id, name)",
             pageSize: 10,
-          });
-
-          return searchResult.data.files ?? [];
-        },
+          }),
         catch: (e) => new FileSearchError({ cause: e }),
       }).pipe(
+        Effect.map(({ data }) => orEmptyArray(data.files)),
         Effect.timeoutOrElse({
           duration: timeout,
           orElse: () =>
@@ -254,12 +247,10 @@ class GoogleTools extends Context.Service<
       const sheets = google.sheets({ version: "v4", auth });
 
       const availableTabs = yield* Effect.tryPromise({
-        try: async () =>
-          sheets.spreadsheets
-            .get({ spreadsheetId: fileId })
-            .then((x) => x.data.sheets ?? []),
+        try: () => sheets.spreadsheets.get({ spreadsheetId: fileId }),
         catch: (e) => new TabsFetchError({ cause: e }),
       }).pipe(
+        Effect.map(({ data }) => orEmptyArray(data.sheets)),
         Effect.timeoutOrElse({
           duration: timeout,
           orElse: () =>
@@ -285,15 +276,17 @@ class GoogleTools extends Context.Service<
       );
 
       return yield* Effect.tryPromise({
-        try: async () =>
-          sheets.spreadsheets.values
-            .get({
-              spreadsheetId: fileId,
-              range: targetTab.properties?.title ?? "Sheet1",
-            })
-            .then((x) => x.data.values ?? []),
+        try: () =>
+          sheets.spreadsheets.values.get({
+            spreadsheetId: fileId,
+            range: Option.fromNullishOr(targetTab.properties).pipe(
+              Option.flatMapNullishOr((properties) => properties.title),
+              Option.getOrElse(() => "Sheet1"),
+            ),
+          }),
         catch: (e) => new TabValuesFetchError({ tabIndex, cause: e }),
       }).pipe(
+        Effect.map(({ data }) => orEmptyArray(data.values)),
         Effect.timeoutOrElse({
           duration: timeout,
           orElse: () =>

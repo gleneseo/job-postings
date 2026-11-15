@@ -1,4 +1,5 @@
-import { Effect, Option } from "effect";
+import { Effect } from "effect";
+import orEmpty from "./or-empty.js";
 
 /**
  * Serializes rows of cells into CSV text, quoting and escaping cells that
@@ -14,9 +15,7 @@ const createCsv = (rows: (string | null | undefined)[][]) =>
       .map((row) =>
         row
           .map((cell) => {
-            const value = Option.fromNullishOr(cell).pipe(
-              Option.getOrElse(() => ""),
-            );
+            const value = orEmpty(cell);
             return value.includes(",") ||
               value.includes("\n") ||
               value.includes('"')

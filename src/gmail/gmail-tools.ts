@@ -20,6 +20,8 @@ import GmailAuthError from "./gmail-auth-error.js";
 import GmailFetchError from "./gmail-fetch-error.js";
 import GmailListError from "./gmail-list-error.js";
 import type Email from "../helpers/email.js";
+import orEmpty from "../helpers/or-empty.js";
+import orEmptyArray from "../helpers/or-empty-array.js";
 import type FilePath from "../helpers/file-path.js";
 
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
@@ -52,36 +54,22 @@ const Token = Schema.Struct({
 });
 
 /**
- * The string, or an empty string when it is missing
- */
-const orEmpty = (value: string | null | undefined) =>
-  Option.fromNullishOr(value).pipe(Option.getOrElse(() => ""));
-
-/**
- * The array, or an empty array when it is missing
- */
-const orEmptyArray = <A>(value: readonly A[] | null | undefined) =>
-  Option.fromNullishOr(value).pipe(Option.getOrElse((): readonly A[] => []));
-
-/**
  * The string when it is present and not empty
  */
 const nonEmpty = (value: string | null | undefined) =>
   Option.fromNullishOr(value).pipe(Option.filter(String.isNonEmpty));
 
-const person = (list: Option.Option<AddressObject>) => {
-  const first = list.pipe(Option.flatMap((l) => Array.head(l.value)));
-  return {
-    name: first.pipe(
-      Option.map((address) => address.name),
-      Option.getOrElse(() => ""),
-    ),
-    email: first.pipe(
-      Option.flatMapNullishOr((address) => address.address),
-      Option.getOrElse(() => ""),
-    ),
-  };
-};
+const person = (list: Option.Option<AddressObject>) =>
+  list.pipe(
+    Option.flatMap((l) => Array.head(l.value)),
+    Option.match({
+      onNone: () => ({ name: "", email: "" }),
+      onSome: (address) => ({
+        name: orEmpty(address.name),
+        email: orEmpty(address.address),
+      }),
+    }),
+  );
 
 /**
  * A collection of tools from Gmail
@@ -243,6 +231,8 @@ class GmailTools extends Context.Service<
                     nonEmpty(message.id),
                   ),
                 );
+                // `Stream.paginate` ends on `None`; `Some(Some(token))`
+                // requests the next page
                 const next = nonEmpty(data.nextPageToken).pipe(
                   Option.map(Option.some),
                 );
