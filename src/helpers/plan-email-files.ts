@@ -1,4 +1,4 @@
-import { Array, Order } from "effect";
+import { Array, HashSet, Order } from "effect";
 import cleanContent from "./clean-content.js";
 import cleanHeader from "./clean-header.js";
 import type Email from "./email.js";
@@ -24,34 +24,36 @@ const UTF8_BOM = "\ufeff";
  * @returns The files to write, ordered by Gmail message ID
  */
 const planEmailFiles = (emails: readonly (typeof Email.Type)[]) => {
-  const used = new Set<string>();
-  return Array.sort(
-    emails,
-    Order.mapInput(Order.String, (email: typeof Email.Type) => email.id),
-  ).map((email) => {
-    const htmlOnly =
-      email.textBody.trim() === "" && email.htmlBody.trim() !== "";
-    const extension = htmlOnly ? "html" : "txt";
-    const stem = fileStem(email.subject);
-    let name = `${stem}.${extension}`;
-    if (used.has(name)) {
-      name = `${stem} (${email.id}).${extension}`;
-    }
-    used.add(name);
+  const [, files] = Array.mapAccum(
+    Array.sort(
+      emails,
+      Order.mapInput(Order.String, (email: typeof Email.Type) => email.id),
+    ),
+    HashSet.empty<string>(),
+    (used, email) => {
+      const htmlOnly =
+        email.textBody.trim() === "" && email.htmlBody.trim() !== "";
+      const extension = htmlOnly ? "html" : "txt";
+      const stem = fileStem(email.subject);
+      const name = HashSet.has(used, `${stem}.${extension}`)
+        ? `${stem} (${email.id}).${extension}`
+        : `${stem}.${extension}`;
 
-    const headers = [
-      `From: ${cleanHeader(email.from.name)} <${cleanHeader(email.from.email)}>`,
-      `To: ${cleanHeader(email.to.name)} <${cleanHeader(email.to.email)}>`,
-      `Subject: ${cleanHeader(email.subject)}`,
-      `Received: ${email.receivedAt}`,
-    ];
-    const content = htmlOnly
-      ? UTF8_BOM +
-        headers.map((header) => `${htmlComment(header)}\n`).join("") +
-        cleanContent(email.htmlBody)
-      : `${headers.join("\n")}\n\n${cleanContent(email.textBody)}`;
-    return { name, content };
-  });
+      const headers = [
+        `From: ${cleanHeader(email.from.name)} <${cleanHeader(email.from.email)}>`,
+        `To: ${cleanHeader(email.to.name)} <${cleanHeader(email.to.email)}>`,
+        `Subject: ${cleanHeader(email.subject)}`,
+        `Received: ${email.receivedAt}`,
+      ];
+      const content = htmlOnly
+        ? UTF8_BOM +
+          headers.map((header) => `${htmlComment(header)}\n`).join("") +
+          cleanContent(email.htmlBody)
+        : `${headers.join("\n")}\n\n${cleanContent(email.textBody)}`;
+      return [HashSet.add(used, name), { name, content }] as const;
+    },
+  );
+  return files;
 };
 
 export default planEmailFiles;
