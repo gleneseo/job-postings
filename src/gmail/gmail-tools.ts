@@ -1,5 +1,6 @@
 import { authenticate } from "@google-cloud/local-auth";
 import {
+  Array,
   Console,
   Context,
   Effect,
@@ -47,9 +48,18 @@ const Token = Schema.Struct({
   scope: Schema.optionalKey(Schema.String),
 });
 
-const person = (list: AddressObject | undefined) => {
-  const first = list?.value[0];
-  return { name: first?.name ?? "", email: first?.address ?? "" };
+const person = (list: Option.Option<AddressObject>) => {
+  const first = list.pipe(Option.flatMap((l) => Array.head(l.value)));
+  return {
+    name: first.pipe(
+      Option.map((address) => address.name),
+      Option.getOrElse(() => ""),
+    ),
+    email: first.pipe(
+      Option.flatMapNullishOr((address) => address.address),
+      Option.getOrElse(() => ""),
+    ),
+  };
 };
 
 /**
@@ -149,7 +159,10 @@ class GmailTools extends Context.Service<
         const client = new google.auth.OAuth2(
           secrets.client_id,
           secrets.client_secret,
-          secrets.redirect_uris?.[0],
+          Option.fromNullishOr(secrets.redirect_uris).pipe(
+            Option.flatMap(Array.head),
+            Option.getOrUndefined,
+          ),
         );
 
         const token = yield* readToken(tokenPath).pipe(
@@ -229,8 +242,12 @@ class GmailTools extends Context.Service<
             );
             return {
               id,
-              from: person(parsed.from),
-              to: person(Array.isArray(parsed.to) ? parsed.to[0] : parsed.to),
+              from: person(Option.fromNullishOr(parsed.from)),
+              to: person(
+                Option.fromNullishOr(parsed.to).pipe(
+                  Option.flatMap((to) => Array.head(Array.ensure(to))),
+                ),
+              ),
               subject: parsed.subject ?? "",
               textBody: (parsed.text ?? "").replace(/\r\n/g, "\n"),
               htmlBody: (typeof parsed.html === "string"

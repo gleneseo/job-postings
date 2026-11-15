@@ -1,4 +1,4 @@
-import { Effect } from "effect";
+import { Array, Effect } from "effect";
 import sortRows from "./sort-rows.js";
 
 /**
@@ -10,10 +10,16 @@ import sortRows from "./sort-rows.js";
  * @returns An effect that resolves with the sorted rows
  */
 const sortValues = (values: string[][]) =>
-  Effect.sync(() => {
-    const [headerRow, ...dataRows] = values;
-    const sortedDataRows = sortRows(dataRows, headerRow ?? []);
-    return headerRow?.length ? [headerRow, ...sortedDataRows] : sortedDataRows;
-  }).pipe(Effect.withSpan("sort-values"));
+  Effect.sync(() =>
+    Array.matchLeft(values, {
+      onEmpty: (): string[][] => [],
+      onNonEmpty: (headerRow, dataRows) => {
+        const sortedDataRows = sortRows(dataRows, headerRow);
+        return Array.isArrayNonEmpty(headerRow)
+          ? [headerRow, ...sortedDataRows]
+          : sortedDataRows;
+      },
+    }),
+  ).pipe(Effect.withSpan("sort-values"));
 
 export default sortValues;
