@@ -2,6 +2,8 @@ import { Command, Flag } from "effect/cli";
 import handleGmailCommand from "../command-handlers/handle-gmail-command.js";
 import FilePath from "../../helpers/file-path.js";
 import Sender from "../../helpers/sender.js";
+import TimeoutSeconds from "../../helpers/timeout-seconds.js";
+import timeoutFlag from "./helpers/timeout-flag.js";
 
 const senders = Flag.String("sender").pipe(
   Flag.withSchema(Sender),
@@ -56,11 +58,21 @@ const quiet = Flag.Boolean("quiet").pipe(
   ),
 );
 
+const timeoutSeconds = timeoutFlag(TimeoutSeconds.make(10), "Gmail");
+
 const gmailCommand = Command.make(
   "gmail",
-  { senders, credentials, database, token, output, quiet },
-  ({ senders, credentials, database, token, output, quiet }) =>
-    handleGmailCommand(senders, credentials, database, token, output, quiet),
+  { senders, credentials, database, token, output, quiet, timeoutSeconds },
+  ({ senders, credentials, database, token, output, quiet, timeoutSeconds }) =>
+    handleGmailCommand(
+      senders,
+      credentials,
+      database,
+      token,
+      output,
+      quiet,
+      timeoutSeconds,
+    ),
 ).pipe(
   Command.withDescription(
     "Download inbox emails from the given senders into SQLite and print them as a table",

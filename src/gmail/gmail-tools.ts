@@ -3,6 +3,7 @@ import {
   Array,
   Console,
   Context,
+  Duration,
   Effect,
   FileSystem,
   Layer,
@@ -23,10 +24,17 @@ import type Email from "../helpers/email.js";
 import orEmpty from "../helpers/or-empty.js";
 import orEmptyArray from "../helpers/or-empty-array.js";
 import type FilePath from "../helpers/file-path.js";
+import RequestLabel from "../helpers/request-label.js";
+import tryRequest from "../helpers/try-request.js";
 
 const SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"];
 const MAX_RESULTS_PER_PAGE = 500;
 const FETCH_CONCURRENCY = 5;
+/**
+ * How long to wait for the user to finish the browser consent flow. Fixed
+ * rather than set by `--timeout`, since it waits on a person, not a server.
+ */
+const CONSENT_TIMEOUT = Duration.minutes(5);
 
 const ClientSecrets = Schema.Struct({
   client_id: Schema.String,
@@ -87,8 +95,8 @@ class GmailTools extends Context.Service<
     /**
      * Creates a Gmail auth client from a Google OAuth client file, scoped to
      * read-only access. The OAuth token is cached in `tokenPath`; if there is
-     * none, the browser opens for the user to consent and the token is saved
-     * there for later runs.
+     * none, the browser opens for the user to consent, waiting up to 5 minutes,
+     * and the token is saved there for later runs.
      *
      * @param credentialsPath - Path to the Google OAuth client JSON file
      * @param tokenPath - Path of the cached OAuth token
@@ -108,11 +116,13 @@ class GmailTools extends Context.Service<
      *
      * @param auth - Authorized Gmail client
      * @param query - The Gmail search query
+     * @param timeout - Maximum time to wait for each page request
      * @returns An Effect that resolves to the matching message IDs
      */
     readonly listMessageIds: (
       auth: Auth.OAuth2Client,
       query: string,
+      timeout: Duration.Duration,
     ) => Effect.Effect<Set<string>, GmailListError>;
 
     /**
@@ -120,11 +130,13 @@ class GmailTools extends Context.Service<
      *
      * @param auth - Authorized Gmail client
      * @param ids - The IDs of the messages to fetch
+     * @param timeout - Maximum time to wait for each fetch request
      * @returns An Effect that resolves to the parsed emails
      */
     readonly fetchEmails: (
       auth: Auth.OAuth2Client,
       ids: readonly string[],
+      timeout: Duration.Duration,
     ) => Effect.Effect<(typeof Email.Type)[], GmailFetchError>;
   }
 >()("@app/GmailTools") {
@@ -189,11 +201,15 @@ class GmailTools extends Context.Service<
           return client;
         }
 
-        yield* Console.error("Opening browser to authorize Gmail access...");
-        const { credentials } = yield* Effect.tryPromise({
+        yield* Console.error(
+          `Opening browser to authorize Gmail access (waiting up to ${Duration.format(CONSENT_TIMEOUT)})...`,
+        );
+        const { credentials } = yield* tryRequest({
           try: () =>
             authenticate({ keyfilePath: credentialsPath, scopes: SCOPES }),
-          catch: (cause) => new GmailAuthError({ tokenPath, cause }),
+          label: RequestLabel.make("Gmail consent"),
+          toError: (cause) => new GmailAuthError({ tokenPath, cause }),
+          timeout: CONSENT_TIMEOUT,
         });
         // `local-auth` bundles a different google-auth-library version than
         // `googleapis`, so its client is structurally incompatible with
@@ -216,10 +232,14 @@ class GmailTools extends Context.Service<
       });
 
       const listMessageIds = Effect.fn("gmail-tools.list-message-ids")(
-        function* (auth: Auth.OAuth2Client, query: string) {
+        function* (
+          auth: Auth.OAuth2Client,
+          query: string,
+          timeout: Duration.Duration,
+        ) {
           const gmail = google.gmail({ version: "v1", auth });
           const listPage = (pageToken: Option.Option<string>) =>
-            Effect.tryPromise({
+            tryRequest({
               try: () =>
                 gmail.users.messages.list({
                   userId: "me",
@@ -230,7 +250,9 @@ class GmailTools extends Context.Service<
                     onSome: (token) => ({ pageToken: token }),
                   }),
                 }),
-              catch: (cause) => new GmailListError({ cause }),
+              label: RequestLabel.make("Message list"),
+              toError: (cause) => new GmailListError({ cause }),
+              timeout,
             }).pipe(
               Effect.map(({ data }) => {
                 const ids = Array.getSomes(
@@ -254,13 +276,19 @@ class GmailTools extends Context.Service<
         },
       );
 
-      const fetchEmail = (gmail: gmail_v1.Gmail, id: string) => {
+      const fetchEmail = (
+        gmail: gmail_v1.Gmail,
+        id: string,
+        timeout: Duration.Duration,
+      ) => {
         const fetchError = (cause: unknown) =>
           new GmailFetchError({ messageId: id, cause });
-        return Effect.tryPromise({
+        return tryRequest({
           try: () =>
             gmail.users.messages.get({ userId: "me", id, format: "raw" }),
-          catch: fetchError,
+          label: RequestLabel.make("Message fetch"),
+          toError: fetchError,
+          timeout,
         }).pipe(
           Effect.flatMap(({ data }) =>
             Effect.tryPromise({
@@ -303,11 +331,16 @@ class GmailTools extends Context.Service<
       const fetchEmails = Effect.fn("gmail-tools.fetch-emails")(function* (
         auth: Auth.OAuth2Client,
         ids: readonly string[],
+        timeout: Duration.Duration,
       ) {
         const gmail = google.gmail({ version: "v1", auth });
-        return yield* Effect.forEach(ids, (id) => fetchEmail(gmail, id), {
-          concurrency: FETCH_CONCURRENCY,
-        });
+        return yield* Effect.forEach(
+          ids,
+          (id) => fetchEmail(gmail, id, timeout),
+          {
+            concurrency: FETCH_CONCURRENCY,
+          },
+        );
       });
 
       return GmailTools.of({ authorize, listMessageIds, fetchEmails });

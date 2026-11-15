@@ -33,6 +33,7 @@ export default defineConfig({
         "src/cli/commands/gleneseo-helpers-command.ts",
         "src/cli/commands/gmail-command.ts",
         "src/cli/commands/job-postings-command.ts",
+        "src/cli/commands/helpers/timeout-flag.ts",
       ],
       reportsDirectory: ".coverage",
     },

@@ -5,6 +5,7 @@ import FolderName from "../../helpers/folder-name.js";
 import FileName from "../../helpers/file-name.js";
 import TabIndex from "../../helpers/tab-index.js";
 import TimeoutSeconds from "../../helpers/timeout-seconds.js";
+import timeoutFlag from "./helpers/timeout-flag.js";
 
 const key = Flag.File("key").pipe(
   Flag.withSchema(FilePath),
@@ -46,17 +47,7 @@ const quiet = Flag.Boolean("quiet").pipe(
   ),
 );
 
-const timeoutSeconds = Flag.Int("timeout").pipe(
-  Flag.filter(
-    (n) => n > 0,
-    (n) => `--timeout must be greater than 0 seconds (got ${n.toString()})`,
-  ),
-  Flag.withSchema(TimeoutSeconds),
-  Flag.withDefault(TimeoutSeconds.make(5)),
-  Flag.withDescription(
-    "Network request timeout, in seconds, for each Google API call (default: 5)",
-  ),
-);
+const timeoutSeconds = timeoutFlag(TimeoutSeconds.make(5), "Google");
 
 const jobPostingsCommand = Command.make(
   "job-postings",

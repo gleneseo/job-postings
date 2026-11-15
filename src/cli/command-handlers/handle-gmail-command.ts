@@ -1,4 +1,11 @@
-import { Console, Effect, type FileSystem, Option, type Path } from "effect";
+import {
+  Console,
+  Duration,
+  Effect,
+  type FileSystem,
+  Option,
+  type Path,
+} from "effect";
 import printBanner from "../print-banner.js";
 import ConfigFileLocator from "../../config/config-file-locator.js";
 import CredentialsFileNotFoundError from "../../config/credentials-file-not-found-error.js";
@@ -17,6 +24,7 @@ import createEmailTableRows from "../../helpers/create-email-table-rows.js";
 import describeCause from "../../helpers/describe-cause.js";
 import FilePath from "../../helpers/file-path.js";
 import Sender from "../../helpers/sender.js";
+import type TimeoutSeconds from "../../helpers/timeout-seconds.js";
 
 /**
  * The domain errors that can end a {@link handleGmailCommand} run. Each
@@ -51,6 +59,8 @@ type GmailError =
  * to skip saving files
  * @param quiet - When true, suppresses the banner and status messages;
  * runtime errors are still printed
+ * @param timeoutSeconds - Network request timeout, in seconds, for each
+ * Gmail API call
  * @returns An effect that resolves once the command has finished, or fails
  * with the {@link GmailError} that stopped it, after logging why
  */
@@ -61,6 +71,7 @@ const handleGmailCommand: (
   token: Option.Option<typeof FilePath.Type>,
   output: Option.Option<typeof FilePath.Type>,
   quiet: boolean,
+  timeoutSeconds: typeof TimeoutSeconds.Type,
 ) => Effect.Effect<
   void,
   GmailError,
@@ -71,11 +82,20 @@ const handleGmailCommand: (
   | GmailTools
   | Path.Path
 > = Effect.fn("gmail-command")(
-  function* (senders, credentials, database, token, output, quiet) {
+  function* (
+    senders,
+    credentials,
+    database,
+    token,
+    output,
+    quiet,
+    timeoutSeconds,
+  ) {
     const configFileLocator = yield* ConfigFileLocator;
     const credentialsFileResolver = yield* CredentialsFileResolver;
     const gmailTools = yield* GmailTools;
     const emailStore = yield* EmailStore;
+    const timeout = Duration.seconds(timeoutSeconds);
 
     const logStatus = (message: string) =>
       quiet ? Effect.void : Console.error(message);
@@ -104,14 +124,14 @@ const handleGmailCommand: (
     const savedIds = yield* emailStore.getSavedIds(databaseFile.path);
 
     yield* logStatus(`Searching Gmail for [${query}].`);
-    const ids = yield* gmailTools.listMessageIds(auth, query);
+    const ids = yield* gmailTools.listMessageIds(auth, query, timeout);
     const skippedIds = ids.intersection(savedIds);
     const newIds = [...ids.difference(savedIds)];
     yield* logStatus(
       `Found ${ids.size.toString()} message(s), ${skippedIds.size.toString()} already saved.`,
     );
 
-    const fetched = yield* gmailTools.fetchEmails(auth, newIds);
+    const fetched = yield* gmailTools.fetchEmails(auth, newIds, timeout);
     yield* emailStore.saveEmails(databaseFile.path, fetched);
     const all = [
       ...fetched,

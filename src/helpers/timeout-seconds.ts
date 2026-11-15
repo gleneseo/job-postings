@@ -1,7 +1,7 @@
 import { Schema } from "effect";
 
 /**
- * The network request timeout, in seconds, applied to each Google API call
+ * The timeout, in seconds, applied to each network request
  */
 const TimeoutSeconds = Schema.Natural.pipe(Schema.brand("TimeoutSeconds"));
 

@@ -120,6 +120,7 @@ The subcommand is read-only: it requests only the `gmail.readonly` scope and nev
 | `--token`, `-t`       | Where to cache the OAuth token                                                                                                                                                                                                                                          | `gleneseo-helpers/gmail-token.json`          |
 | `--output[=dir]`      | Also save each email as `<subject>.txt` (`.html` if it has only an HTML body) directly in `dir`, including emails already in the database. The directory (and any missing parents) is only created when there are emails to save. The directory must be given with `=`. | off; `output` when the flag has no directory |
 | `--quiet`, `-q`       | Suppress the banner and status messages; runtime errors print                                                                                                                                                                                                           | `false`                                      |
+| `--timeout`           | Network request timeout, in seconds, for each Gmail API call. It doesn't apply to the browser consent page, which has its own fixed 5-minute limit.                                                                                                                     | `10`                                         |
 
 For example:
 
@@ -134,7 +135,7 @@ npm start -- gmail --sender linkedin.com --sender ziprecruiter.com --output
 npm start -- gmail --sender jobs@example.com --output=./emails
 ```
 
-The first run opens your browser to a Google consent page. Choose the test user, click **Advanced → Go to <app name> (unsafe)** past the "Google hasn't verified this app" warning (expected, since you created the app), and approve read-only access. The token is then cached, so later runs don't open the browser. While the consent screen is in "Testing" status, Google expires the token after about 7 days; delete the token file and run again to re-authorize.
+The first run opens your browser to a Google consent page. Choose the test user, click **Advanced → Go to <app name> (unsafe)** past the "Google hasn't verified this app" warning (expected, since you created the app), and approve read-only access within 5 minutes (a fixed limit that `--timeout` doesn't change; past it the command fails with `GmailAuthError` and you can run it again). The token is then cached, so later runs don't open the browser. While the consent screen is in "Testing" status, Google expires the token after about 7 days; delete the token file and run again to re-authorize.
 
 Saved files have `From`, `To`, `Subject`, and `Received` headers followed by the plain-text body. HTML-only emails keep their HTML body and put the same headers in HTML comments at the top of the file, with any `--` in a header value separated (`- -`) so it can't end the comment. Files are written as UTF-8, and HTML files start with a UTF-8 byte order mark so browsers decode them correctly even when the email's HTML declares another charset (e.g. `iso-8859-1`). Control characters other than tab, newline, and carriage return are stripped (so a saved email can't contain terminal escape sequences or NUL bytes), and line breaks in header values are collapsed. If two emails share a subject, the later one's file name gets its Gmail message ID appended.
 
@@ -187,7 +188,7 @@ Each domain error a subcommand can fail with exits with its own code, so scripts
 | `61`      | `EmailFilesWriteError`         | Writing the email files failed.                                    |
 | `130`     | —                              | Interrupted (e.g. `Ctrl+C`).                                       |
 
-A request that exceeds `--timeout` fails with the same error and exit code its underlying call would otherwise use (e.g. a folder search that times out is a `FolderSearchError`, exit `10`) — timing out doesn't introduce a separate code.
+A request that exceeds `--timeout` fails with the same error and exit code its underlying call would otherwise use (e.g. a folder search that times out is a `FolderSearchError`, exit `10`, and a Gmail message fetch that times out is a `GmailFetchError`, exit `52`) — timing out doesn't introduce a separate code. The same holds for the `gmail` browser consent page's fixed 5-minute limit, which fails with `GmailAuthError`, exit `50`.
 
 ## Scripts
 
