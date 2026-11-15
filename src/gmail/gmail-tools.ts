@@ -8,7 +8,10 @@ import {
   Layer,
   Option,
   Path,
+  Predicate,
   Schema,
+  Stream,
+  String,
 } from "effect";
 import { type Auth, type gmail_v1, google } from "googleapis";
 import { simpleParser, type AddressObject } from "mailparser";
@@ -47,6 +50,24 @@ const Token = Schema.Struct({
   id_token: NullableString,
   scope: Schema.optionalKey(Schema.String),
 });
+
+/**
+ * The string, or an empty string when it is missing
+ */
+const orEmpty = (value: string | null | undefined) =>
+  Option.fromNullishOr(value).pipe(Option.getOrElse(() => ""));
+
+/**
+ * The array, or an empty array when it is missing
+ */
+const orEmptyArray = <A>(value: readonly A[] | null | undefined) =>
+  Option.fromNullishOr(value).pipe(Option.getOrElse((): readonly A[] => []));
+
+/**
+ * The string when it is present and not empty
+ */
+const nonEmpty = (value: string | null | undefined) =>
+  Option.fromNullishOr(value).pipe(Option.filter(String.isNonEmpty));
 
 const person = (list: Option.Option<AddressObject>) => {
   const first = list.pipe(Option.flatMap((l) => Array.head(l.value)));
@@ -202,63 +223,85 @@ class GmailTools extends Context.Service<
       const listMessageIds = Effect.fn("gmail-tools.list-message-ids")(
         function* (auth: Auth.OAuth2Client, query: string) {
           const gmail = google.gmail({ version: "v1", auth });
-          const ids = new Set<string>();
-          let pageToken: string | undefined;
-          do {
-            const page: gmail_v1.Schema$ListMessagesResponse =
-              yield* Effect.tryPromise({
-                try: () =>
-                  gmail.users.messages
-                    .list({
-                      userId: "me",
-                      q: query,
-                      maxResults: MAX_RESULTS_PER_PAGE,
-                      ...(pageToken === undefined ? {} : { pageToken }),
-                    })
-                    .then((response) => response.data),
-                catch: (cause) => new GmailListError({ cause }),
-              });
-            for (const message of page.messages ?? []) {
-              if (message.id) {
-                ids.add(message.id);
-              }
-            }
-            pageToken = page.nextPageToken ?? undefined;
-          } while (pageToken);
-          return ids;
+          const listPage = (pageToken: Option.Option<string>) =>
+            Effect.tryPromise({
+              try: () =>
+                gmail.users.messages.list({
+                  userId: "me",
+                  q: query,
+                  maxResults: MAX_RESULTS_PER_PAGE,
+                  ...Option.match(pageToken, {
+                    onNone: () => ({}),
+                    onSome: (token) => ({ pageToken: token }),
+                  }),
+                }),
+              catch: (cause) => new GmailListError({ cause }),
+            }).pipe(
+              Effect.map(({ data }) => {
+                const ids = Array.getSomes(
+                  Array.map(orEmptyArray(data.messages), (message) =>
+                    nonEmpty(message.id),
+                  ),
+                );
+                const next = nonEmpty(data.nextPageToken).pipe(
+                  Option.map(Option.some),
+                );
+                return [ids, next] as const;
+              }),
+            );
+          const ids = yield* Stream.paginate(
+            Option.none<string>(),
+            listPage,
+          ).pipe(Stream.runCollect);
+          return new Set(ids);
         },
       );
 
-      const fetchEmail = (gmail: gmail_v1.Gmail, id: string) =>
-        Effect.tryPromise({
-          try: async () => {
-            const { data } = await gmail.users.messages.get({
-              userId: "me",
-              id,
-              format: "raw",
-            });
-            const parsed = await simpleParser(
-              Buffer.from(data.raw ?? "", "base64url"),
-            );
-            return {
-              id,
-              from: person(Option.fromNullishOr(parsed.from)),
-              to: person(
-                Option.fromNullishOr(parsed.to).pipe(
-                  Option.flatMap((to) => Array.head(Array.ensure(to))),
-                ),
+      const fetchEmail = (gmail: gmail_v1.Gmail, id: string) => {
+        const fetchError = (cause: unknown) =>
+          new GmailFetchError({ messageId: id, cause });
+        return Effect.tryPromise({
+          try: () =>
+            gmail.users.messages.get({ userId: "me", id, format: "raw" }),
+          catch: fetchError,
+        }).pipe(
+          Effect.flatMap(({ data }) =>
+            Effect.tryPromise({
+              try: () =>
+                simpleParser(Buffer.from(orEmpty(data.raw), "base64url")),
+              catch: fetchError,
+            }).pipe(
+              Effect.flatMap((parsed) =>
+                Effect.try({
+                  try: () => ({
+                    id,
+                    from: person(Option.fromNullishOr(parsed.from)),
+                    to: person(
+                      Option.fromNullishOr(parsed.to).pipe(
+                        Option.flatMap((to) => Array.head(Array.ensure(to))),
+                      ),
+                    ),
+                    subject: orEmpty(parsed.subject),
+                    textBody: orEmpty(parsed.text).replace(/\r\n/g, "\n"),
+                    htmlBody: Option.liftPredicate(
+                      parsed.html,
+                      Predicate.isString,
+                    )
+                      .pipe(Option.getOrElse(() => ""))
+                      .replace(/\r\n/g, "\n"),
+                    // Throws a RangeError for an unreadable `internalDate`
+                    receivedAt: new Date(
+                      Number(data.internalDate),
+                    ).toISOString(),
+                  }),
+                  catch: fetchError,
+                }),
               ),
-              subject: parsed.subject ?? "",
-              textBody: (parsed.text ?? "").replace(/\r\n/g, "\n"),
-              htmlBody: (typeof parsed.html === "string"
-                ? parsed.html
-                : ""
-              ).replace(/\r\n/g, "\n"),
-              receivedAt: new Date(Number(data.internalDate)).toISOString(),
-            };
-          },
-          catch: (cause) => new GmailFetchError({ messageId: id, cause }),
-        }).pipe(Effect.withSpan("gmail-tools.fetch-email"));
+            ),
+          ),
+          Effect.withSpan("gmail-tools.fetch-email"),
+        );
+      };
 
       const fetchEmails = Effect.fn("gmail-tools.fetch-emails")(function* (
         auth: Auth.OAuth2Client,
