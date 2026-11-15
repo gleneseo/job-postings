@@ -33,15 +33,9 @@ When asked to stack PRs, create each PR with `--base` set to its parent branch, 
 
 Any `git stash` operation must include untracked files (i.e. pass `-u`/`--include-untracked`).
 
-## Test naming
+## Coding standards
 
-All test labels (e.g. the string passed to `it`/`test`) must start with "should". For example, "should return a truthy value", or "should find a user".
-
-## Code documentation
-
-IMPORTANT: Code documentation must follow [TSDoc](https://tsdoc.org/) conventions.
-
-Documentation strings must never end in a `.`, unless they include multiple phrases (e.g. multiple sentences), in which case every phrase, including the last, ends in a `.`.
+The review-time coding standards, including test naming and code documentation, live in `CODING_STANDARDS.md`.
 
 ## Project Structure
 
