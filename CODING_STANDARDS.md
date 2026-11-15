@@ -53,6 +53,36 @@ The test is that searching the repo for the old name finds nothing left over.
 
 When the change repeats a logic shape that already exists (the same pipeline, wrapper or message pattern), it reuses or extracts the shared version rather than adding another copy. If the extraction is out of scope, the review names it, and the follow-up goes in a GitHub issue (e.g. #56 for the repeated Google timeout wrapper).
 
+## 8. Effect failures are `Error`s
+
+Every `Effect.fail` (and `yield* new XError(...)`, or a `catch:` in `Effect.tryPromise`/`Effect.try`) fails with an `Error` instance, in `src` and in tests alike.
+
+- In `src`, that is a domain tagged error (rule 3) or an Effect error such as `Cause.TimeoutError` or `CliError`.
+- In tests, it is the same tagged error the code under test would raise. When the test needs a stand-in, it uses a small tagged error defined in the test.
+- A failure value that is a string, number, plain object or `undefined` is a violation. So is a bare `new Error(...)` passed to `Effect.fail`. A bare `Error` is fine as the `cause` inside a tagged error.
+
+## 9. Every cast explains itself
+
+A type assertion (`x as T`, `x as unknown as T`, `<T>x`) or a non-null assertion (`x!`) has a comment on the line above it saying why the type system can't prove the type and why the cast is safe. A good example is "googleapis types the client loosely; the test never calls it". `as const` is not a cast and needs no comment.
+
+Prefer the alternatives that need no cast: a `Schema` decode, a type guard or `Predicate`, `satisfies`, or a correctly typed test double. A cast whose comment can't name a reason is a sign one of those fits.
+
+## 10. Effect helpers over raw JavaScript
+
+When the `effect` library has a helper for the operation, use it instead of the raw JavaScript equivalent. Typical cases:
+
+| Raw JavaScript                                                   | Effect helper                                                         |
+| ---------------------------------------------------------------- | --------------------------------------------------------------------- |
+| `arr[i]`, `arr.find(...)` that may miss                          | `Array.get`, `Array.findFirst` (returning `Option`)                   |
+| `null`/`undefined` checks, `?? fallback` chains on domain values | `Option` (`Option.fromNullishOr`, `Option.match`, `Option.getOrElse`) |
+| `try`/`catch`, `await`, `.then`                                  | `Effect.try`, `Effect.tryPromise`, `Effect.gen`                       |
+| `setTimeout`, numeric milliseconds                               | `Effect.sleep`, `Effect.timeout*`, `Duration`                         |
+| `JSON.parse` plus manual checks, `typeof` validation             | `Schema.decodeUnknown*`                                               |
+| `console.*`, `process.env`, `node:fs`                            | `Console`, `Config`, `FileSystem`                                     |
+| Hand-rolled sorting, grouping or comparison                      | `Array.sort` with `Order`, `Array.groupBy`, `Equivalence`             |
+
+Plain language features that have no Effect counterpart worth using stay as they are (property access, template strings, `.length`). The same goes for the boundary of a third-party API (e.g. the `googleapis` promise inside `Effect.tryPromise`). When in doubt, check the local Effect source at `~/.local/share/vendors/effect` for a helper before writing one by hand.
+
 ## Mechanical rules (to automate)
 
 These rules are mechanical and belong in a lint rule or test. That work is tracked in #57. Until it lands, review checks them too:
