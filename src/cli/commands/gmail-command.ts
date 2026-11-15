@@ -3,6 +3,7 @@ import handleGmailCommand from "../command-handlers/handle-gmail-command.js";
 import FilePath from "../../helpers/file-path.js";
 import Sender from "../../helpers/sender.js";
 import TimeoutSeconds from "../../helpers/timeout-seconds.js";
+import timeoutFlag from "../timeout-flag.js";
 
 const senders = Flag.String("sender").pipe(
   Flag.withSchema(Sender),
@@ -57,17 +58,7 @@ const quiet = Flag.Boolean("quiet").pipe(
   ),
 );
 
-const timeoutSeconds = Flag.Int("timeout").pipe(
-  Flag.filter(
-    (n) => n > 0,
-    (n) => `--timeout must be greater than 0 seconds (got ${n.toString()})`,
-  ),
-  Flag.withSchema(TimeoutSeconds),
-  Flag.withDefault(TimeoutSeconds.make(10)),
-  Flag.withDescription(
-    "Network request timeout, in seconds, for each Gmail API call (default: 10)",
-  ),
-);
+const timeoutSeconds = timeoutFlag(TimeoutSeconds.make(10), "Gmail");
 
 const gmailCommand = Command.make(
   "gmail",

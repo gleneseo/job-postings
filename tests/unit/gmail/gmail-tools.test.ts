@@ -1,4 +1,6 @@
 import { assert, describe, expect, it } from "@effect/vitest";
+// `vi.mock` is only hoisted above the imports when `vi` comes from `vitest`
+// itself, not from its `@effect/vitest` re-export
 import { vi } from "vitest";
 import {
   Array,
@@ -9,6 +11,7 @@ import {
   FileSystem,
   Function,
   Layer,
+  Match,
   Option,
   Path,
   PlatformError,
@@ -87,13 +90,22 @@ const fakeAuth = (
       opts.url,
       Option.fromNullishOr(opts.params).pipe(Option.getOrElse(() => ({}))),
     );
-    return "pending" in reply
-      ? new Promise<never>(Function.constVoid)
-      : "later" in reply
-        ? reply.later.then((data) => ({ data, headers: new Headers() }))
-        : "error" in reply
-          ? Promise.reject(reply.error)
-          : Promise.resolve({ data: reply.data, headers: new Headers() });
+    return Match.value(reply).pipe(
+      Match.when(
+        { pending: true },
+        () => new Promise<never>(Function.constVoid),
+      ),
+      Match.when({ later: Match.defined }, ({ later }) =>
+        later.then((data) => ({ data, headers: new Headers() })),
+      ),
+      Match.when({ error: Match.defined }, ({ error }) =>
+        Promise.reject(error),
+      ),
+      Match.when({ data: Match.any }, ({ data }) =>
+        Promise.resolve({ data, headers: new Headers() }),
+      ),
+      Match.exhaustive,
+    );
   }) as typeof auth.request;
   return auth;
 };
