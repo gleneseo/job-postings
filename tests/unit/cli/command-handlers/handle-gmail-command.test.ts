@@ -360,6 +360,30 @@ describe("handleGmailCommand", () => {
       }),
   );
 
+  it.effect("should not create the output directory when no emails match", () =>
+    Effect.gen(function* () {
+      const doubles = makeDoubles({
+        listMessageIds: () => Effect.succeed(new Set()),
+        fetchEmails: () => Effect.succeed([]),
+        getEmailsByIds: () => Effect.succeed([]),
+      });
+
+      yield* handleGmailCommand(
+        senders,
+        Option.some(credentials),
+        Option.some(db),
+        Option.some(token),
+        Option.some(FilePath.make("output")),
+        false,
+      ).pipe(provideDoubles(doubles, []));
+
+      expect(doubles.makeDirectory).not.toHaveBeenCalled();
+      const errorLines = yield* TestConsole.errorLines;
+      expect(errorLines).toContain("No emails to save to output/.");
+      expect(errorLines.join("\n")).not.toContain("Saved 0 file(s)");
+    }),
+  );
+
   it.effect(
     "should fail with a distinct exit code on a missing credentials file after logging it",
     () =>
