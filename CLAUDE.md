@@ -35,13 +35,7 @@ Any `git stash` operation must include untracked files (i.e. pass `-u`/`--includ
 
 ## Coding standards
 
-The review-time coding standards, including test naming, live in `CODING_STANDARDS.md`.
-
-## Code documentation
-
-IMPORTANT: Code documentation must follow [TSDoc](https://tsdoc.org/) conventions.
-
-Documentation strings must never end in a `.`, unless they include multiple phrases (e.g. multiple sentences), in which case every phrase, including the last, ends in a `.`.
+The review-time coding standards, including test naming and code documentation, live in `CODING_STANDARDS.md`.
 
 ## Project Structure
 
