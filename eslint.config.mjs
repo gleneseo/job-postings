@@ -6,6 +6,7 @@ import importX from "eslint-plugin-import-x";
 import vitest from "@vitest/eslint-plugin";
 import tsdoc from "eslint-plugin-tsdoc";
 import tseslint from "typescript-eslint";
+import docStringFullStops from "./src/eslint-rules/doc-string-full-stops.ts";
 
 export default defineConfig(
   {
@@ -29,6 +30,7 @@ export default defineConfig(
     plugins: {
       "import-x": importX,
       tsdoc,
+      local: { rules: { "doc-string-full-stops": docStringFullStops } },
     },
     languageOptions: {
       parserOptions: {
@@ -38,6 +40,7 @@ export default defineConfig(
     rules: {
       curly: ["error", "all"],
       "tsdoc/syntax": "error",
+      "local/doc-string-full-stops": "error",
       "import-x/exports-last": "error",
       "no-restricted-syntax": [
         "error",

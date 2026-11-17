@@ -84,9 +84,3 @@ When the `effect` library has a helper for the operation, use it instead of the 
 | Hand-rolled sorting, grouping or comparison                      | `Array.sort` with `Order`, `Array.groupBy`, `Equivalence`             |
 
 Plain language features that have no Effect counterpart worth using stay as they are (property access, template strings, `.length`). The same goes for the boundary of a third-party API (e.g. the `googleapis` promise inside `Effect.tryPromise`). When in doubt, check the local Effect source at `~/.local/share/vendors/effect` for a helper before writing one by hand.
-
-## Mechanical rules (to automate)
-
-These rules are mechanical and belong in a lint rule or test. That work is tracked in #57. Until it lands, review checks them too:
-
-- **Code documentation:** a documentation string never ends in a `.`, unless it includes multiple phrases (e.g. multiple sentences), in which case every phrase, including the last, ends in a `.`.
