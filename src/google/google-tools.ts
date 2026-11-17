@@ -42,6 +42,20 @@ const KeyFile = Schema.Struct({
   private_key: Schema.String,
 });
 
+/** Describes a Drive search and how to report its failure */
+interface SearchDriveOptions<E extends Error> {
+  /** Authenticated Google auth client with Drive access */
+  readonly auth: Auth.GoogleAuth;
+  /** Drive query selecting the files to list */
+  readonly q: string;
+  /** Names the search in its timeout message */
+  readonly label: typeof RequestLabel.Type;
+  /** Builds the domain error from the failure's cause */
+  readonly toError: (cause: unknown) => E;
+  /** Maximum time to wait for the search request */
+  readonly timeout: Duration.Duration;
+}
+
 /**
  * A collection of tools from Google
  */
@@ -193,13 +207,7 @@ class GoogleTools extends Context.Service<
       });
 
       /** Lists the Drive files matching a query, failing with the given error */
-      const searchDrive = <E extends Error>(options: {
-        readonly auth: Auth.GoogleAuth;
-        readonly q: string;
-        readonly label: typeof RequestLabel.Type;
-        readonly toError: (cause: unknown) => E;
-        readonly timeout: Duration.Duration;
-      }) =>
+      const searchDrive = <E extends Error>(options: SearchDriveOptions<E>) =>
         tryRequest({
           try: () =>
             google.drive({ version: "v3", auth: options.auth }).files.list({
