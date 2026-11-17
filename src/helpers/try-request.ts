@@ -15,7 +15,8 @@ interface TryRequestOptions<A, E extends Error> {
 
 /**
  * Runs a network request, failing with a domain error if the request
- * rejects or takes longer than the timeout
+ * rejects or takes longer than the timeout. A request that times out or is
+ * interrupted is cancelled through the signal given to `try`
  *
  * @param options - The request to run and how to report its failure
  * @returns An Effect that resolves to the request's response
