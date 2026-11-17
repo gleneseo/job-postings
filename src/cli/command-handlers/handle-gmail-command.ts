@@ -7,7 +7,7 @@ import {
   type Path,
 } from "effect";
 import printBanner from "../print-banner.js";
-import ConfigFileLocator from "../../config/config-file-locator.js";
+import WellKnownFileLocator from "../../config/well-known-file-locator.js";
 import CredentialsFileNotFoundError from "../../config/credentials-file-not-found-error.js";
 import CredentialsFileResolver from "../../config/credentials-file-resolver.js";
 import CredentialsReadError from "../../gmail/credentials-read-error.js";
@@ -75,7 +75,7 @@ const handleGmailCommand: (
 ) => Effect.Effect<
   void,
   GmailError,
-  | ConfigFileLocator
+  | WellKnownFileLocator
   | CredentialsFileResolver
   | EmailStore
   | FileSystem.FileSystem
@@ -91,7 +91,7 @@ const handleGmailCommand: (
     quiet,
     timeoutSeconds,
   ) {
-    const configFileLocator = yield* ConfigFileLocator;
+    const wellKnownFileLocator = yield* WellKnownFileLocator;
     const credentialsFileResolver = yield* CredentialsFileResolver;
     const gmailTools = yield* GmailTools;
     const emailStore = yield* EmailStore;
@@ -103,12 +103,14 @@ const handleGmailCommand: (
     yield* printBanner(quiet);
 
     const credentialsFile = yield* credentialsFileResolver.resolve(credentials);
-    const databaseFile = yield* configFileLocator.locate(
+    const databaseFile = yield* wellKnownFileLocator.locate(
       database,
+      "data",
       "gmail.sqlite",
     );
-    const tokenFile = yield* configFileLocator.locate(
+    const tokenFile = yield* wellKnownFileLocator.locate(
       token,
+      "data",
       "gmail-token.json",
     );
 

@@ -23,13 +23,25 @@ The JSON file holding the OAuth2 credentials that let the `gmail` Helper act as 
 _Avoid_: Access file, key file, service account key
 
 **OAuth token**:
-The cached result of the user consenting, in the browser, to let the `gmail` Helper read their mailbox, so later runs don't ask again. It is either given explicitly or, by default, kept in the Config directory as `gmail-token.json`.
+The cached result of the user consenting, in the browser, to let the `gmail` Helper read their mailbox, so later runs don't ask again. It is either given explicitly or, by default, kept in the Data directory as `gmail-token.json`.
 _Avoid_: Credentials, access token file
 
 **Email database**:
-The SQLite file where the `gmail` Helper stores the emails it downloads, so later runs only fetch new messages. It is either given explicitly or, by default, kept in the Config directory as `gmail.sqlite`.
+The SQLite file where the `gmail` Helper stores the emails it downloads, so later runs only fetch new messages. It is either given explicitly or, by default, kept in the Data directory as `gmail.sqlite`.
 _Avoid_: Cache, inbox
+
+**Well-known location**:
+The place a Helper looks for one of its files when the user doesn't give a path. It is the file's name inside the Config directory or the Data directory, depending on whether the file is configuration or generated data. The home of each directory comes from an environment variable when that is set to an absolute path, and otherwise falls back to a default under the user's home directory.
+_Avoid_: Default path, default location
+
+**Well-known file**:
+A file that a Helper finds in a Well-known location when none is given explicitly, such as the Service account key file, the OAuth2 credentials file, the OAuth token, and the Email database.
+_Avoid_: Default file
 
 **Config directory**:
 The `gleneseo-helpers` directory, under the user's configuration home, where Helpers keep their configuration files. It is shared by all Helpers.
 _Avoid_: Settings folder, config folder
+
+**Data directory**:
+The `gleneseo-helpers` directory, under the user's data home, where Helpers keep the data they generate, such as the OAuth token and the Email database. It is shared by all Helpers and is separate from the Config directory.
+_Avoid_: Storage folder, data folder, cache

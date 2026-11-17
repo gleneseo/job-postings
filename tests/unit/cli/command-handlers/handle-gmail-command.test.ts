@@ -14,7 +14,7 @@ import { TestConsole } from "effect/testing";
 import type { Auth } from "googleapis";
 import banner from "../../../../src/cli/banner.js";
 import handleGmailCommand from "../../../../src/cli/command-handlers/handle-gmail-command.js";
-import ConfigFileLocator from "../../../../src/config/config-file-locator.js";
+import WellKnownFileLocator from "../../../../src/config/well-known-file-locator.js";
 import CredentialsFileNotFoundError from "../../../../src/config/credentials-file-not-found-error.js";
 import CredentialsFileResolver from "../../../../src/config/credentials-file-resolver.js";
 import CredentialsReadError from "../../../../src/gmail/credentials-read-error.js";
@@ -89,7 +89,11 @@ const makeDoubles = (
         })),
   ),
   locate: vi.fn(
-    (explicitPath: Option.Option<typeof FilePath.Type>, fileName: string) =>
+    (
+      explicitPath: Option.Option<typeof FilePath.Type>,
+      _directory: "config" | "data",
+      fileName: string,
+    ) =>
       Effect.succeed({
         path: Option.getOrElse(explicitPath, () => wellKnown(fileName)),
         source: Option.isSome(explicitPath)
@@ -156,7 +160,7 @@ const provideDoubles =
             Layer.succeed(CredentialsFileResolver, {
               resolve: doubles.resolve,
             }),
-            Layer.succeed(ConfigFileLocator, { locate: doubles.locate }),
+            Layer.succeed(WellKnownFileLocator, { locate: doubles.locate }),
             Layer.succeed(GmailTools, {
               authorize: doubles.authorize,
               listMessageIds: doubles.listMessageIds,
@@ -279,8 +283,8 @@ describe("handleGmailCommand", () => {
 
         expect(doubles.resolve).toHaveBeenCalledExactlyOnceWith(Option.none());
         expect(doubles.locate.mock.calls).toStrictEqual([
-          [Option.none(), "gmail.sqlite"],
-          [Option.none(), "gmail-token.json"],
+          [Option.none(), "data", "gmail.sqlite"],
+          [Option.none(), "data", "gmail-token.json"],
         ]);
         expect(doubles.getSavedIds).toHaveBeenCalledExactlyOnceWith(
           wellKnown("gmail.sqlite"),
