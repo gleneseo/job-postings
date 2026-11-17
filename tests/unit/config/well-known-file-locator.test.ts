@@ -8,14 +8,14 @@ import {
   PlatformError,
 } from "effect";
 import { NodePath } from "@effect/platform-node";
-import ConfigFileLocator from "../../../src/config/config-file-locator.js";
+import WellKnownFileLocator from "../../../src/config/well-known-file-locator.js";
 import FilePath from "../../../src/helpers/file-path.js";
 
 const home = "/home/test";
 
 /** Makes a file system in which only the given paths exist, with the given types */
 const makeLayer = (files: Record<string, "File" | "Directory">) =>
-  ConfigFileLocator.layerWith(() => home).pipe(
+  WellKnownFileLocator.layerWith(() => home).pipe(
     Layer.provide(
       FileSystem.layerNoop({
         stat: (path) =>
@@ -39,10 +39,11 @@ const locate = (
   env: Record<string, string>,
   files: Record<string, "File" | "Directory">,
   fileName = "job-postings.json",
+  directory: "config" | "data" = "config",
 ) =>
   Effect.gen(function* () {
-    const locator = yield* ConfigFileLocator;
-    return yield* locator.locate(explicit, fileName);
+    const locator = yield* WellKnownFileLocator;
+    return yield* locator.locate(explicit, directory, fileName);
   }).pipe(
     Effect.provide(
       Layer.mergeAll(
@@ -54,7 +55,7 @@ const locate = (
 
 const wellKnown = "gleneseo-helpers/job-postings.json";
 
-describe("ConfigFileLocator", () => {
+describe("WellKnownFileLocator", () => {
   it.effect("should use the explicit path when it exists", () =>
     Effect.gen(function* () {
       const result = yield* locate(
@@ -188,6 +189,70 @@ describe("ConfigFileLocator", () => {
       );
 
       assert.isFalse(result.exists);
+    }),
+  );
+
+  it.effect(
+    "should use XDG_DATA_HOME for the data directory when it is set",
+    () =>
+      Effect.gen(function* () {
+        const result = yield* locate(
+          Option.none(),
+          { XDG_DATA_HOME: "/xdg-data", XDG_CONFIG_HOME: "/xdg" },
+          { "/xdg-data/gleneseo-helpers/gmail.sqlite": "File" },
+          "gmail.sqlite",
+          "data",
+        );
+
+        assert.deepStrictEqual(result, {
+          path: "/xdg-data/gleneseo-helpers/gmail.sqlite",
+          source: "well-known location",
+          exists: true,
+        });
+      }),
+  );
+
+  for (const [description, env] of [
+    ["unset", {}],
+    ["empty", { XDG_DATA_HOME: "" }],
+    ["relative", { XDG_DATA_HOME: "relative" }],
+  ] as const) {
+    it.effect(
+      `should fall back to ~/.local/share for the data directory when XDG_DATA_HOME is ${description}`,
+      () =>
+        Effect.gen(function* () {
+          const path = `${home}/.local/share/gleneseo-helpers/gmail.sqlite`;
+          const result = yield* locate(
+            Option.none(),
+            env,
+            { [path]: "File" },
+            "gmail.sqlite",
+            "data",
+          );
+
+          assert.deepStrictEqual(result, {
+            path,
+            source: "well-known location",
+            exists: true,
+          });
+        }),
+    );
+  }
+
+  it.effect("should ignore XDG_CONFIG_HOME for the data directory", () =>
+    Effect.gen(function* () {
+      const result = yield* locate(
+        Option.none(),
+        { XDG_CONFIG_HOME: "/xdg" },
+        {},
+        "gmail.sqlite",
+        "data",
+      );
+
+      assert.strictEqual(
+        result.path,
+        `${home}/.local/share/gleneseo-helpers/gmail.sqlite`,
+      );
     }),
   );
 });

@@ -1,6 +1,6 @@
 import { assert, describe, it } from "@effect/vitest";
 import { Effect, Layer, Option } from "effect";
-import ConfigFileLocator from "../../../src/config/config-file-locator.js";
+import WellKnownFileLocator from "../../../src/config/well-known-file-locator.js";
 import CredentialsFileResolver from "../../../src/config/credentials-file-resolver.js";
 import CredentialsFileNotFoundError from "../../../src/config/credentials-file-not-found-error.js";
 import FilePath from "../../../src/helpers/file-path.js";
@@ -9,11 +9,12 @@ import FilePath from "../../../src/helpers/file-path.js";
 const makeLocator = (exists: boolean) => {
   const calls: {
     explicitPath: Option.Option<typeof FilePath.Type>;
+    directory: string;
     fileName: string;
   }[] = [];
-  const layer = Layer.succeed(ConfigFileLocator, {
-    locate: (explicitPath, fileName) => {
-      calls.push({ explicitPath, fileName });
+  const layer = Layer.succeed(WellKnownFileLocator, {
+    locate: (explicitPath, directory, fileName) => {
+      calls.push({ explicitPath, directory, fileName });
       return Effect.succeed({
         path: Option.getOrElse(explicitPath, () => FilePath.make("/wk.json")),
         source: Option.isSome(explicitPath)
@@ -51,7 +52,11 @@ describe("CredentialsFileResolver", () => {
 
         assert.deepStrictEqual(result, { path: "/k.json", source: "flag" });
         assert.deepStrictEqual(locator.calls, [
-          { explicitPath: explicit, fileName: "gmail.json" },
+          {
+            explicitPath: explicit,
+            directory: "config",
+            fileName: "gmail.json",
+          },
         ]);
       }),
   );

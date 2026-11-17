@@ -1,6 +1,6 @@
 import { Context, Effect, Layer, Option } from "effect";
 import FilePath from "../helpers/file-path.js";
-import ConfigFileLocator from "./config-file-locator.js";
+import WellKnownFileLocator from "./well-known-file-locator.js";
 import CredentialsFileNotFoundError from "./credentials-file-not-found-error.js";
 
 /**
@@ -35,13 +35,14 @@ class CredentialsFileResolver extends Context.Service<
   static readonly layer = Layer.effect(
     CredentialsFileResolver,
     Effect.gen(function* () {
-      const locator = yield* ConfigFileLocator;
+      const locator = yield* WellKnownFileLocator;
 
       const resolve = Effect.fn("credentials-file-resolver.resolve")(function* (
         explicitPath: Option.Option<typeof FilePath.Type>,
       ) {
         const { exists, ...resolved } = yield* locator.locate(
           explicitPath,
+          "config",
           "gmail.json",
         );
 

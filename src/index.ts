@@ -9,7 +9,7 @@ import { CliConfig, Command, GlobalFlag } from "effect/cli";
 import { OtlpSerialization, OtlpTracer } from "effect/observability";
 import packageJson from "../package.json" with { type: "json" };
 import gleneseoHelpersCommand from "./cli/commands/gleneseo-helpers-command.js";
-import ConfigFileLocator from "./config/config-file-locator.js";
+import WellKnownFileLocator from "./config/well-known-file-locator.js";
 import CredentialsFileResolver from "./config/credentials-file-resolver.js";
 import KeyFileResolver from "./config/key-file-resolver.js";
 import EmailStore from "./gmail/email-store.js";
@@ -55,7 +55,7 @@ Command.run(gleneseoHelpersCommand, { version: packageJson.version }).pipe(
       ObservabilityLayer,
       CliConfigLayer,
     ).pipe(
-      Layer.provideMerge(ConfigFileLocator.layer),
+      Layer.provideMerge(WellKnownFileLocator.layer),
       Layer.provideMerge(NodeServices.layer),
     ),
   ),

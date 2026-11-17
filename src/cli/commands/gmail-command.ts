@@ -28,7 +28,7 @@ const database = Flag.File("database").pipe(
   Flag.withAlias("d"),
   Flag.optional,
   Flag.withDescription(
-    "The SQLite file to write emails to (default: gleneseo-helpers/gmail.sqlite in $XDG_CONFIG_HOME, or ~/.config if unset)",
+    "The SQLite file to write emails to (default: gleneseo-helpers/gmail.sqlite in $XDG_DATA_HOME, or ~/.local/share if unset)",
   ),
 );
 
@@ -37,7 +37,7 @@ const token = Flag.File("token").pipe(
   Flag.withAlias("t"),
   Flag.optional,
   Flag.withDescription(
-    "Where to cache the OAuth token (default: gleneseo-helpers/gmail-token.json in $XDG_CONFIG_HOME, or ~/.config if unset)",
+    "Where to cache the OAuth token (default: gleneseo-helpers/gmail-token.json in $XDG_DATA_HOME, or ~/.local/share if unset)",
   ),
 );
 

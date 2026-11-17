@@ -1,6 +1,6 @@
 import { Context, Effect, Layer, Option } from "effect";
 import FilePath from "../helpers/file-path.js";
-import ConfigFileLocator from "./config-file-locator.js";
+import WellKnownFileLocator from "./well-known-file-locator.js";
 import KeyFileNotFoundError from "./key-file-not-found-error.js";
 
 /**
@@ -35,13 +35,14 @@ class KeyFileResolver extends Context.Service<
   static readonly layer = Layer.effect(
     KeyFileResolver,
     Effect.gen(function* () {
-      const locator = yield* ConfigFileLocator;
+      const locator = yield* WellKnownFileLocator;
 
       const resolve = Effect.fn("key-file-resolver.resolve")(function* (
         explicitPath: Option.Option<typeof FilePath.Type>,
       ) {
         const { exists, ...resolved } = yield* locator.locate(
           explicitPath,
+          "config",
           "job-postings.json",
         );
 
