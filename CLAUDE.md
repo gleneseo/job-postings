@@ -54,7 +54,7 @@ The review-time coding standards, including test naming and code documentation, 
 
 ### Issue tracker
 
-Issues are tracked in GitHub Issues (`gleneseo/job-postings`) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues are tracked in GitHub Issues (`gleneseo/gleneseo-helpers`) via the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

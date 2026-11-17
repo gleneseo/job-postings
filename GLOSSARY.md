@@ -3,7 +3,7 @@
 ## Language
 
 **Helper**:
-A single-purpose function of the `gleneseo-helpers` tool, exposed as a top-level subcommand. `job-postings` is the first Helper.
+A single-purpose function of the `gleneseo-helpers` tool, exposed as a top-level subcommand, e.g. `job-postings` or `gmail`.
 _Avoid_: Tool (that is the whole `gleneseo-helpers` CLI), script
 
 **Job Postings sheet**:
