@@ -69,4 +69,68 @@ describe("tryRequest", () => {
         );
       }),
   );
+
+  it.effect(
+    "should abort the request's signal when the request times out",
+    () =>
+      Effect.gen(function* () {
+        let requestSignal: AbortSignal | undefined;
+
+        const fiber = yield* tryRequest({
+          try: (signal) => {
+            requestSignal = signal;
+            return new Promise<never>(Function.constVoid);
+          },
+          label,
+          toError,
+          timeout,
+        }).pipe(Effect.flip, Effect.forkChild);
+        yield* TestClock.adjust(Duration.seconds(6));
+        yield* Fiber.join(fiber);
+
+        assert.isTrue(requestSignal?.aborted);
+      }),
+  );
+
+  it.effect(
+    "should abort the request's signal when the request is interrupted",
+    () =>
+      Effect.gen(function* () {
+        let requestSignal: AbortSignal | undefined;
+
+        const fiber = yield* tryRequest({
+          try: (signal) => {
+            requestSignal = signal;
+            return new Promise<never>(Function.constVoid);
+          },
+          label,
+          toError,
+          timeout,
+        }).pipe(Effect.forkChild);
+        yield* Effect.yieldNow;
+        yield* Fiber.interrupt(fiber);
+
+        assert.isTrue(requestSignal?.aborted);
+      }),
+  );
+
+  it.effect(
+    "should leave the request's signal unaborted when the request succeeds",
+    () =>
+      Effect.gen(function* () {
+        let requestSignal: AbortSignal | undefined;
+
+        yield* tryRequest({
+          try: (signal) => {
+            requestSignal = signal;
+            return Promise.resolve("response");
+          },
+          label,
+          toError,
+          timeout,
+        });
+
+        assert.isFalse(requestSignal?.aborted);
+      }),
+  );
 });

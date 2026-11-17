@@ -209,12 +209,15 @@ class GoogleTools extends Context.Service<
       /** Lists the Drive files matching a query, failing with the given error */
       const searchDrive = <E extends Error>(options: SearchDriveOptions<E>) =>
         tryRequest({
-          try: () =>
-            google.drive({ version: "v3", auth: options.auth }).files.list({
-              q: options.q,
-              fields: "files(id, name)",
-              pageSize: 10,
-            }),
+          try: (signal) =>
+            google.drive({ version: "v3", auth: options.auth }).files.list(
+              {
+                q: options.q,
+                fields: "files(id, name)",
+                pageSize: 10,
+              },
+              { signal },
+            ),
           label: options.label,
           toError: options.toError,
           timeout: options.timeout,
@@ -295,7 +298,8 @@ class GoogleTools extends Context.Service<
         const sheets = google.sheets({ version: "v4", auth });
 
         const availableTabs = yield* tryRequest({
-          try: () => sheets.spreadsheets.get({ spreadsheetId: fileId }),
+          try: (signal) =>
+            sheets.spreadsheets.get({ spreadsheetId: fileId }, { signal }),
           label: TABS_FETCH,
           toError: (cause) => new TabsFetchError({ cause }),
           timeout,
@@ -313,14 +317,17 @@ class GoogleTools extends Context.Service<
         );
 
         return yield* tryRequest({
-          try: () =>
-            sheets.spreadsheets.values.get({
-              spreadsheetId: fileId,
-              range: Option.fromNullishOr(targetTab.properties).pipe(
-                Option.flatMapNullishOr((properties) => properties.title),
-                Option.getOrElse(() => "Sheet1"),
-              ),
-            }),
+          try: (signal) =>
+            sheets.spreadsheets.values.get(
+              {
+                spreadsheetId: fileId,
+                range: Option.fromNullishOr(targetTab.properties).pipe(
+                  Option.flatMapNullishOr((properties) => properties.title),
+                  Option.getOrElse(() => "Sheet1"),
+                ),
+              },
+              { signal },
+            ),
           label: TAB_VALUES_FETCH,
           toError: (cause) => new TabValuesFetchError({ tabIndex, cause }),
           timeout,
