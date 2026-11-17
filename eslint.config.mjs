@@ -3,6 +3,7 @@
 import js from "@eslint/js";
 import { defineConfig } from "eslint/config";
 import importX from "eslint-plugin-import-x";
+import vitest from "@vitest/eslint-plugin";
 import tseslint from "typescript-eslint";
 
 export default defineConfig(
@@ -46,6 +47,33 @@ export default defineConfig(
           selector: "ExportDefaultDeclaration[declaration.type!='Identifier']",
           message:
             "Don't export the default value inline. Define it first, then `export default name;` at the bottom of the file.",
+        },
+        {
+          // `vitest/valid-title` doesn't recognise the `@effect/vitest` variants, so check them here
+          selector:
+            "CallExpression[callee.object.name='it'][callee.property.name=/^(effect|live|scoped|scopedLive)$/][arguments.0.type='Literal'][arguments.0.value!=/^should /]",
+          message: 'Test labels must start with "should".',
+        },
+        {
+          selector:
+            "CallExpression[callee.object.object.name='it'][callee.object.property.name=/^(effect|live|scoped|scopedLive)$/][arguments.0.type='Literal'][arguments.0.value!=/^should /]",
+          message: 'Test labels must start with "should".',
+        },
+      ],
+    },
+  },
+  {
+    files: ["tests/**/*.ts"],
+    plugins: { vitest },
+    settings: { vitest: { vitestImports: ["@effect/vitest"] } },
+    rules: {
+      "vitest/valid-title": [
+        "error",
+        {
+          mustMatch: {
+            it: ["^should ", 'Test labels must start with "should"'],
+            test: ["^should ", 'Test labels must start with "should"'],
+          },
         },
       ],
     },
