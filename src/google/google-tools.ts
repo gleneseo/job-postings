@@ -161,27 +161,33 @@ class GoogleTools extends Context.Service<
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
 
-      // Credentials are passed in rather than as `keyFile`, which
-      // google-auth-library deprecates with a warning on standard error
+      // A `JWT` client is passed in as `authClient` because google-auth-library
+      // deprecates `GoogleAuth`'s `keyFile` and `credentials` options with a
+      // warning on standard error
       const getAuth = Effect.fn("google-tools.get-auth")(function* (
         keyFilePath: typeof FilePath.Type,
       ) {
-        const credentials = yield* fs.readFileString(keyFilePath).pipe(
-          Effect.flatMap(
-            Schema.decodeUnknownEffect(Schema.fromJsonString(KeyFile)),
-          ),
-          Effect.mapError(
-            (cause) => new KeyFileReadError({ path: keyFilePath, cause }),
-          ),
-        );
+        const { client_email, private_key } = yield* fs
+          .readFileString(keyFilePath)
+          .pipe(
+            Effect.flatMap(
+              Schema.decodeUnknownEffect(Schema.fromJsonString(KeyFile)),
+            ),
+            Effect.mapError(
+              (cause) => new KeyFileReadError({ path: keyFilePath, cause }),
+            ),
+          );
         return yield* Effect.sync(
           () =>
             new google.auth.GoogleAuth({
-              credentials,
-              scopes: [
-                "https://www.googleapis.com/auth/spreadsheets.readonly",
-                "https://www.googleapis.com/auth/drive.readonly",
-              ],
+              authClient: new google.auth.JWT({
+                email: client_email,
+                key: private_key,
+                scopes: [
+                  "https://www.googleapis.com/auth/spreadsheets.readonly",
+                  "https://www.googleapis.com/auth/drive.readonly",
+                ],
+              }),
             }),
         );
       });
