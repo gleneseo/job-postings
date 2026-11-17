@@ -29,6 +29,18 @@ ruleTester.run("doc-string-full-stops", docStringFullStops, {
     "/** Reads mail, i.e. Gmail messages */\nconst a = 1;",
     "/** Compares Drive vs. Gmail */\nconst a = 1;",
     "/** Reads mail, e.g. Gmail. Then sends it. */\nconst a = 1;",
+    // a sentence may start with a backtick, a digit or an inline tag
+    "/** Does a thing. `foo` is used. */\nconst a = 1;",
+    "/** Does a thing. 2 retries are made. */\nconst a = 1;",
+    "/** Does a thing. {@link Other} does another. */\nconst a = 1;",
+    // list items are not phrases, however they are written
+    "/**\n * Downloads emails in one of two ways:\n *\n * - all emails from a sender\n * - only the emails not yet stored\n */\nconst a = 1;",
+    "/**\n * Downloads emails in one of two ways:\n * - all emails from a sender\n * - only the emails not yet stored\n */\nconst a = 1;",
+    "/**\n * Downloads emails in this order:\n *\n * 1. all emails from a sender\n * 2) only the emails not yet stored\n * + the rest\n */\nconst a = 1;",
+    "/**\n * Downloads emails in one of two ways:\n *\n * - all emails from a sender,\n *   oldest first\n * - only the emails not yet stored\n */\nconst a = 1;",
+    "/**\n * Downloads emails\n *\n * @returns The emails in one of two orders:\n * - oldest first\n * - newest first\n */\nconst a = 1;",
+    // an @example section is skipped even without a code block
+    "/**\n * Does a thing\n *\n * @example\n * add(1, 2). Prints 3.\n */\nconst a = 1;",
     // only doc comments are checked
     "// Does a thing.\nconst a = 1;",
     "/* Does a thing. */\nconst a = 1;",
@@ -65,9 +77,41 @@ ruleTester.run("doc-string-full-stops", docStringFullStops, {
     {
       code: "/**\n * Does a thing.\n *\n * @param x - The input.\n */\nconst a = 1;",
       errors: [
-        { messageId: "singlePhraseEndsInFullStop" },
-        { messageId: "singlePhraseEndsInFullStop" },
+        { messageId: "singlePhraseEndsInFullStop", line: 2 },
+        { messageId: "singlePhraseEndsInFullStop", line: 4 },
       ],
+    },
+    {
+      code: "/**\n * Does a thing\n *\n * @param x - The input.\n * @returns The output. Or nothing\n */\nconst a = 1;",
+      errors: [
+        { messageId: "singlePhraseEndsInFullStop", line: 4 },
+        { messageId: "multiplePhrasesNeedFullStops", line: 5 },
+      ],
+    },
+    {
+      code: "\n\n/** Does a thing. */\nconst a = 1;",
+      errors: [{ messageId: "singlePhraseEndsInFullStop", line: 3 }],
+    },
+    {
+      code: "/** Does a thing. `foo` is used */\nconst a = 1;",
+      errors: [{ messageId: "multiplePhrasesNeedFullStops" }],
+    },
+    {
+      code: "/** Does a thing. 2 retries are made */\nconst a = 1;",
+      errors: [{ messageId: "multiplePhrasesNeedFullStops" }],
+    },
+    {
+      code: "/** Does a thing. {@link Other} does another */\nconst a = 1;",
+      errors: [{ messageId: "multiplePhrasesNeedFullStops" }],
+    },
+    // list items are skipped, so the lead-in is a single phrase whatever the items end in
+    {
+      code: "/**\n * Downloads emails.\n *\n * - Fetches every email from the sender.\n * - Skips the ones already stored.\n */\nconst a = 1;",
+      errors: [{ messageId: "singlePhraseEndsInFullStop", line: 2 }],
+    },
+    {
+      code: "/**\n * Does a thing.\n *\n * - a\n * - b\n *\n * Then another\n */\nconst a = 1;",
+      errors: [{ messageId: "multiplePhrasesNeedFullStops", line: 2 }],
     },
   ],
 });
