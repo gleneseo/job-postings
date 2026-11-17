@@ -85,8 +85,8 @@ When the `effect` library has a helper for the operation, use it instead of the 
 
 Plain language features that have no Effect counterpart worth using stay as they are (property access, template strings, `.length`). The same goes for the boundary of a third-party API (e.g. the `googleapis` promise inside `Effect.tryPromise`). When in doubt, check the local Effect source at `~/.local/share/vendors/effect` for a helper before writing one by hand.
 
-## Mechanical rules (to automate)
+## Rule checked in review
 
-These rules are mechanical and belong in a lint rule or test. That work is tracked in #57. Until it lands, review checks them too:
+This rule is mechanical but isn't automated: a lint rule would have to find the phrases in free-form prose (abbreviations, lists, code, tags), which is too complex to maintain (see #57). Review checks it:
 
 - **Code documentation:** a documentation string never ends in a `.`, unless it includes multiple phrases (e.g. multiple sentences), in which case every phrase, including the last, ends in a `.`.
