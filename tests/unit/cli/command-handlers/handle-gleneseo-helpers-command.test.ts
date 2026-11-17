@@ -20,28 +20,16 @@ const withTTY = <A, E, R>(isTTY: boolean, effect: Effect.Effect<A, E, R>) =>
 
 describe("handleGleneseoHelpersCommand", () => {
   it.effect(
-    "should print the banner and then show help when not quiet on an interactive terminal",
+    "should print the banner and then show help on an interactive terminal",
     () =>
       Effect.gen(function* () {
         const error = yield* withTTY(
           true,
-          handleGleneseoHelpersCommand(false).pipe(Effect.flip),
+          handleGleneseoHelpersCommand().pipe(Effect.flip),
         );
 
         assert.strictEqual(error._tag, "ShowHelp");
         assert.deepStrictEqual(yield* TestConsole.logLines, [banner]);
       }),
-  );
-
-  it.effect("should not print the banner when quiet", () =>
-    Effect.gen(function* () {
-      const error = yield* withTTY(
-        true,
-        handleGleneseoHelpersCommand(true).pipe(Effect.flip),
-      );
-
-      assert.strictEqual(error._tag, "ShowHelp");
-      assert.deepStrictEqual(yield* TestConsole.logLines, []);
-    }),
   );
 });

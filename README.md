@@ -67,7 +67,7 @@ Locates a Google Sheet in Drive by folder and file name, sorts its rows by `Last
 npm start -- job-postings
 ```
 
-An ASCII banner prints before the command runs, but only on an interactive terminal (stdout is a TTY) — it's skipped when output is piped, redirected, or otherwise non-interactive, so it doesn't clutter scripted or CI runs. Passing `--quiet` also suppresses it. Every subcommand, and the bare `gleneseo-helpers` root command (which accepts its own `--quiet`/`-q`), prints the same banner; the `help` subcommand always shows it on a TTY.
+An ASCII banner prints before the command runs, but only on an interactive terminal (stdout is a TTY) — it's skipped when output is piped, redirected, or otherwise non-interactive, so it doesn't clutter scripted or CI runs. Passing `--quiet` also suppresses it. Every subcommand and the bare `gleneseo-helpers` root command print the same banner; the `help` subcommand always shows it on a TTY.
 
 **Key file lookup.** If `--key` is given, that file is used and the command fails if it does not exist. Otherwise the command looks in the well-known location `gleneseo-helpers/job-postings.json` under `$XDG_CONFIG_HOME`, falling back to `~/.config` when `XDG_CONFIG_HOME` is unset, empty, or not an absolute path, and fails if no file exists there. Only regular files count. The `gleneseo-helpers` directory is shared by the other subcommands for their own configuration; `gmail` looks for its OAuth2 credentials file the same way, with `--credentials` and `gleneseo-helpers/gmail.json`.
 
