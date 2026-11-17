@@ -1,4 +1,13 @@
-import { Array, Context, Duration, Effect, Layer, Option } from "effect";
+import {
+  Array,
+  Context,
+  Duration,
+  Effect,
+  FileSystem,
+  Layer,
+  Option,
+  Schema,
+} from "effect";
 import FilePath from "../helpers/file-path.js";
 import { Auth, drive_v3, google } from "googleapis";
 import FolderName from "../helpers/folder-name.js";
@@ -12,6 +21,7 @@ import FolderNotFoundError from "./folder-not-found-error.js";
 import FileSearchError from "./file-search-error.js";
 import DuplicateFilesFoundError from "./duplicate-files-found-error.js";
 import FileNotFoundError from "./file-not-found-error.js";
+import KeyFileReadError from "./key-file-read-error.js";
 import TabsFetchError from "./tabs-fetch-error.js";
 import InvalidTabIndexError from "./invalid-tab-index-error.js";
 import TabValuesFetchError from "./tab-values-fetch-error.js";
@@ -25,6 +35,14 @@ const TABS_FETCH = RequestLabel.make("Tabs fetch");
 const TAB_VALUES_FETCH = RequestLabel.make("Tab values fetch");
 
 /**
+ * The fields of a Service account key file that `GoogleAuth` needs
+ */
+const KeyFile = Schema.Struct({
+  client_email: Schema.String,
+  private_key: Schema.String,
+});
+
+/**
  * A collection of tools from Google
  */
 class GoogleTools extends Context.Service<
@@ -35,11 +53,13 @@ class GoogleTools extends Context.Service<
      * to read-only access to Sheets and Drive
      *
      * @param keyFilePath - Path to the service account key file
-     * @returns An Effect that resolves to the configured auth client
+     * @returns An Effect that resolves to the configured auth client, or
+     * fails with {@link KeyFileReadError} when the key file cannot be read or
+     * is not a valid service account key file
      */
     readonly getAuth: (
       keyFilePath: typeof FilePath.Type,
-    ) => Effect.Effect<Auth.GoogleAuth>;
+    ) => Effect.Effect<Auth.GoogleAuth, KeyFileReadError>;
 
     /**
      * Searches Google Drive for non-trashed folders whose name exactly
@@ -136,146 +156,161 @@ class GoogleTools extends Context.Service<
     >;
   }
 >()("@app/GoogleTools") {
-  static readonly layer = Layer.sync(GoogleTools, () => {
-    const getAuth = Effect.fn("google-tools.get-auth")(function* (
-      keyFilePath: typeof FilePath.Type,
-    ) {
-      return yield* Effect.sync(
-        () =>
-          new google.auth.GoogleAuth({
-            keyFile: keyFilePath,
-            scopes: [
-              "https://www.googleapis.com/auth/spreadsheets.readonly",
-              "https://www.googleapis.com/auth/drive.readonly",
-            ],
-          }),
-      );
-    });
+  static readonly layer = Layer.effect(
+    GoogleTools,
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
 
-    const getFolders = Effect.fn("google-tools.get-folders")(function* (
-      auth: Auth.GoogleAuth,
-      folderName: typeof FolderName.Type,
-      timeout: Duration.Duration,
-    ) {
-      return yield* tryRequest({
-        try: () =>
-          google.drive({ version: "v3", auth }).files.list({
-            q: `name = "${folderName}" and mimeType = "application/vnd.google-apps.folder" and trashed = false`,
-            fields: "files(id, name)",
-            pageSize: 10,
-          }),
-        label: FOLDER_SEARCH,
-        toError: (cause) => new FolderSearchError({ cause }),
-        timeout,
-      }).pipe(Effect.map(({ data }) => orEmptyArray(data.files)));
-    });
-
-    const getFolder = Effect.fn("google-tools.get-folder")(function* (
-      auth: Auth.GoogleAuth,
-      folderName: typeof FolderName.Type,
-      timeout: Duration.Duration,
-    ) {
-      const folders = yield* getFolders(auth, folderName, timeout);
-      if (folders.length > 1) {
-        return yield* DuplicateFoldersFoundError.fromArray(folders);
-      }
-
-      return yield* Array.head(folders).pipe(
-        Option.match({
-          onNone: () => new FolderNotFoundError({ folderName }),
-          onSome: (x) => Effect.succeed(x),
-        }),
-      );
-    });
-
-    const getFiles = Effect.fn("google-tools.get-files")(function* (
-      auth: Auth.GoogleAuth,
-      fileName: typeof FileName.Type,
-      folderId: typeof FolderId.Type,
-      timeout: Duration.Duration,
-    ) {
-      return yield* tryRequest({
-        try: () =>
-          google.drive({ version: "v3", auth }).files.list({
-            q: `name = "${fileName}" and mimeType = "application/vnd.google-apps.spreadsheet" and '${folderId}' in parents and trashed = false`,
-            fields: "files(id, name)",
-            pageSize: 10,
-          }),
-        label: FILE_SEARCH,
-        toError: (cause) => new FileSearchError({ cause }),
-        timeout,
-      }).pipe(Effect.map(({ data }) => orEmptyArray(data.files)));
-    });
-
-    const getFile = Effect.fn("google-tools.get-file")(function* (
-      auth: Auth.GoogleAuth,
-      fileName: typeof FileName.Type,
-      folderId: typeof FolderId.Type,
-      timeout: Duration.Duration,
-    ) {
-      const files = yield* getFiles(auth, fileName, folderId, timeout);
-      if (files.length > 1) {
-        return yield* DuplicateFilesFoundError.fromArray(files);
-      }
-
-      return yield* Array.head(files).pipe(
-        Option.match({
-          onNone: () => new FileNotFoundError({ fileName }),
-          onSome: (x) => Effect.succeed(x),
-        }),
-      );
-    });
-
-    const getTabValues = Effect.fn("google-tools.get-tab-values")(function* (
-      auth: Auth.GoogleAuth,
-      fileId: typeof FileId.Type,
-      tabIndex: typeof TabIndex.Type,
-      timeout: Duration.Duration,
-    ) {
-      const sheets = google.sheets({ version: "v4", auth });
-
-      const availableTabs = yield* tryRequest({
-        try: () => sheets.spreadsheets.get({ spreadsheetId: fileId }),
-        label: TABS_FETCH,
-        toError: (cause) => new TabsFetchError({ cause }),
-        timeout,
-      }).pipe(Effect.map(({ data }) => orEmptyArray(data.sheets)));
-
-      const targetTab = yield* Array.get(availableTabs, tabIndex).pipe(
-        Option.match({
-          onNone: () =>
-            new InvalidTabIndexError({
-              indexRequested: tabIndex,
-              totalCount: availableTabs.length,
+      // Credentials are passed in rather than as `keyFile`, which
+      // google-auth-library deprecates with a warning on standard error
+      const getAuth = Effect.fn("google-tools.get-auth")(function* (
+        keyFilePath: typeof FilePath.Type,
+      ) {
+        const credentials = yield* fs.readFileString(keyFilePath).pipe(
+          Effect.flatMap(
+            Schema.decodeUnknownEffect(Schema.fromJsonString(KeyFile)),
+          ),
+          Effect.mapError(
+            (cause) => new KeyFileReadError({ path: keyFilePath, cause }),
+          ),
+        );
+        return yield* Effect.sync(
+          () =>
+            new google.auth.GoogleAuth({
+              credentials,
+              scopes: [
+                "https://www.googleapis.com/auth/spreadsheets.readonly",
+                "https://www.googleapis.com/auth/drive.readonly",
+              ],
             }),
-          onSome: (x) => Effect.succeed(x),
-        }),
-      );
+        );
+      });
 
-      return yield* tryRequest({
-        try: () =>
-          sheets.spreadsheets.values.get({
-            spreadsheetId: fileId,
-            range: Option.fromNullishOr(targetTab.properties).pipe(
-              Option.flatMapNullishOr((properties) => properties.title),
-              Option.getOrElse(() => "Sheet1"),
-            ),
+      const getFolders = Effect.fn("google-tools.get-folders")(function* (
+        auth: Auth.GoogleAuth,
+        folderName: typeof FolderName.Type,
+        timeout: Duration.Duration,
+      ) {
+        return yield* tryRequest({
+          try: () =>
+            google.drive({ version: "v3", auth }).files.list({
+              q: `name = "${folderName}" and mimeType = "application/vnd.google-apps.folder" and trashed = false`,
+              fields: "files(id, name)",
+              pageSize: 10,
+            }),
+          label: FOLDER_SEARCH,
+          toError: (cause) => new FolderSearchError({ cause }),
+          timeout,
+        }).pipe(Effect.map(({ data }) => orEmptyArray(data.files)));
+      });
+
+      const getFolder = Effect.fn("google-tools.get-folder")(function* (
+        auth: Auth.GoogleAuth,
+        folderName: typeof FolderName.Type,
+        timeout: Duration.Duration,
+      ) {
+        const folders = yield* getFolders(auth, folderName, timeout);
+        if (folders.length > 1) {
+          return yield* DuplicateFoldersFoundError.fromArray(folders);
+        }
+
+        return yield* Array.head(folders).pipe(
+          Option.match({
+            onNone: () => new FolderNotFoundError({ folderName }),
+            onSome: (x) => Effect.succeed(x),
           }),
-        label: TAB_VALUES_FETCH,
-        toError: (cause) => new TabValuesFetchError({ tabIndex, cause }),
-        timeout,
-      }).pipe(Effect.map(({ data }) => orEmptyArray(data.values)));
-    });
+        );
+      });
 
-    return GoogleTools.of({
-      getAuth,
-      getFolders,
-      getFolder,
-      getFiles,
-      getFile,
-      getTabValues,
-    });
-  });
+      const getFiles = Effect.fn("google-tools.get-files")(function* (
+        auth: Auth.GoogleAuth,
+        fileName: typeof FileName.Type,
+        folderId: typeof FolderId.Type,
+        timeout: Duration.Duration,
+      ) {
+        return yield* tryRequest({
+          try: () =>
+            google.drive({ version: "v3", auth }).files.list({
+              q: `name = "${fileName}" and mimeType = "application/vnd.google-apps.spreadsheet" and '${folderId}' in parents and trashed = false`,
+              fields: "files(id, name)",
+              pageSize: 10,
+            }),
+          label: FILE_SEARCH,
+          toError: (cause) => new FileSearchError({ cause }),
+          timeout,
+        }).pipe(Effect.map(({ data }) => orEmptyArray(data.files)));
+      });
+
+      const getFile = Effect.fn("google-tools.get-file")(function* (
+        auth: Auth.GoogleAuth,
+        fileName: typeof FileName.Type,
+        folderId: typeof FolderId.Type,
+        timeout: Duration.Duration,
+      ) {
+        const files = yield* getFiles(auth, fileName, folderId, timeout);
+        if (files.length > 1) {
+          return yield* DuplicateFilesFoundError.fromArray(files);
+        }
+
+        return yield* Array.head(files).pipe(
+          Option.match({
+            onNone: () => new FileNotFoundError({ fileName }),
+            onSome: (x) => Effect.succeed(x),
+          }),
+        );
+      });
+
+      const getTabValues = Effect.fn("google-tools.get-tab-values")(function* (
+        auth: Auth.GoogleAuth,
+        fileId: typeof FileId.Type,
+        tabIndex: typeof TabIndex.Type,
+        timeout: Duration.Duration,
+      ) {
+        const sheets = google.sheets({ version: "v4", auth });
+
+        const availableTabs = yield* tryRequest({
+          try: () => sheets.spreadsheets.get({ spreadsheetId: fileId }),
+          label: TABS_FETCH,
+          toError: (cause) => new TabsFetchError({ cause }),
+          timeout,
+        }).pipe(Effect.map(({ data }) => orEmptyArray(data.sheets)));
+
+        const targetTab = yield* Array.get(availableTabs, tabIndex).pipe(
+          Option.match({
+            onNone: () =>
+              new InvalidTabIndexError({
+                indexRequested: tabIndex,
+                totalCount: availableTabs.length,
+              }),
+            onSome: (x) => Effect.succeed(x),
+          }),
+        );
+
+        return yield* tryRequest({
+          try: () =>
+            sheets.spreadsheets.values.get({
+              spreadsheetId: fileId,
+              range: Option.fromNullishOr(targetTab.properties).pipe(
+                Option.flatMapNullishOr((properties) => properties.title),
+                Option.getOrElse(() => "Sheet1"),
+              ),
+            }),
+          label: TAB_VALUES_FETCH,
+          toError: (cause) => new TabValuesFetchError({ tabIndex, cause }),
+          timeout,
+        }).pipe(Effect.map(({ data }) => orEmptyArray(data.values)));
+      });
+
+      return GoogleTools.of({
+        getAuth,
+        getFolders,
+        getFolder,
+        getFiles,
+        getFile,
+        getTabValues,
+      });
+    }),
+  );
 }
 
 export default GoogleTools;

@@ -181,6 +181,7 @@ Each domain error a subcommand can fail with exits with its own code, so scripts
 | `40`      | `KeyFileNotFoundError`         | No key file exists at the given or well-known path.                |
 | `41`      | `CredentialsFileNotFoundError` | No OAuth2 credentials file exists at the given or well-known path. |
 | `42`      | `CredentialsReadError`         | The OAuth2 credentials file is not a valid OAuth client file.      |
+| `43`      | `KeyFileReadError`             | The key file is not a valid service account key file.              |
 | `50`      | `GmailAuthError`               | Authorizing with Gmail, or caching the token, failed.              |
 | `51`      | `GmailListError`               | Searching Gmail for matching messages failed.                      |
 | `52`      | `GmailFetchError`              | Fetching or parsing a message failed.                              |

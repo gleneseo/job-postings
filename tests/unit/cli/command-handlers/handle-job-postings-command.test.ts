@@ -11,6 +11,7 @@ import FileSearchError from "../../../../src/google/file-search-error.js";
 import FileNotFoundError from "../../../../src/google/file-not-found-error.js";
 import DuplicateFilesFoundError from "../../../../src/google/duplicate-files-found-error.js";
 import MissingFileIdError from "../../../../src/google/missing-file-id-error.js";
+import KeyFileReadError from "../../../../src/google/key-file-read-error.js";
 import TabsFetchError from "../../../../src/google/tabs-fetch-error.js";
 import TabValuesFetchError from "../../../../src/google/tab-values-fetch-error.js";
 import InvalidTabIndexError from "../../../../src/google/invalid-tab-index-error.js";
@@ -46,7 +47,9 @@ const msgFetchingTabValues = (index: typeof TabIndex.Type) =>
 const msgSorting = `Sorting values from [${fileName}].`;
 
 const makeGoogleToolsTestDouble = (overrides: {
-  getAuth?: (path: typeof FilePath.Type) => Effect.Effect<Auth.GoogleAuth>;
+  getAuth?: (
+    path: typeof FilePath.Type,
+  ) => Effect.Effect<Auth.GoogleAuth, KeyFileReadError>;
   getFolder?: (
     auth: Auth.GoogleAuth,
     name: typeof FolderName.Type,
@@ -543,13 +546,39 @@ describe("handleJobPostingsCommand", () => {
       ).pipe(provideTestDoubles(googleTools));
 
       assert.deepStrictEqual(yield* TestConsole.logLines, [fakeCsv]);
-      assert.deepStrictEqual(
-        (yield* TestConsole.errorLines).filter(
-          (line) => line === msgAuthenticating,
-        ),
-        [],
-      );
+      assert.deepStrictEqual(yield* TestConsole.errorLines, []);
     }),
+  );
+
+  it.effect(
+    "should fail with a distinct exit code on a key file read failure after logging it and without searching for the folder",
+    () =>
+      Effect.gen(function* () {
+        const error = new KeyFileReadError({
+          path: key,
+          cause: new Error("not JSON"),
+        });
+        const googleTools = makeGoogleToolsTestDouble({
+          getAuth: () => Effect.fail(error),
+        });
+
+        const failure = yield* handleJobPostingsCommand(
+          Option.some(key),
+          folderName,
+          fileName,
+          tabIndex,
+          quiet,
+          timeoutSeconds,
+        ).pipe(provideTestDoubles(googleTools), Effect.flip);
+
+        expect(failure).toStrictEqual(error);
+        expect(Runtime.getErrorExitCode(failure)).toBe(43);
+        expect(googleTools.getFolder).not.toHaveBeenCalled();
+        assert.deepStrictEqual(yield* TestConsole.errorLines, [
+          msgAuthenticating,
+          `❌ Could not read key file [${key}]. Make sure it is a valid service account key file.`,
+        ]);
+      }),
   );
 
   it.effect(

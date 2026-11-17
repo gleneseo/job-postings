@@ -3,6 +3,7 @@ import printBanner from "../print-banner.js";
 import KeyFileResolver from "../../config/key-file-resolver.js";
 import KeyFileNotFoundError from "../../config/key-file-not-found-error.js";
 import GoogleTools from "../../google/google-tools.js";
+import KeyFileReadError from "../../google/key-file-read-error.js";
 import MissingFolderIdError from "../../google/missing-folder-id-error.js";
 import FilePath from "../../helpers/file-path.js";
 import FolderName from "../../helpers/folder-name.js";
@@ -39,6 +40,7 @@ type JobPostingsError =
   | FolderSearchError
   | InvalidTabIndexError
   | KeyFileNotFoundError
+  | KeyFileReadError
   | MissingFileIdError
   | MissingFolderIdError
   | NoTabDataError
@@ -132,11 +134,11 @@ const handleJobPostingsCommand: (
       return yield* new NoTabDataError({ tabIndex });
     }
 
-    yield* Console.error(`Sorting values from [${fileName}].`);
+    yield* logStatus(`Sorting values from [${fileName}].`);
     yield* sortValues(values).pipe(
       Effect.andThen((x) => createCsv(x)),
       Effect.andThen((x) => Console.log(x)),
-      Effect.andThen(() => Console.error("Success.")),
+      Effect.andThen(() => logStatus("Success.")),
     );
   }).pipe(
     Effect.withSpan("job-postings-command"),
@@ -174,6 +176,10 @@ const handleJobPostingsCommand: (
       KeyFileNotFoundError: (e) =>
         Console.error(
           `❌ Could not find key file [${e.path}] (${e.source}). Make sure the file exists.`,
+        ).pipe(Effect.andThen(() => Effect.fail(e))),
+      KeyFileReadError: (e) =>
+        Console.error(
+          `❌ Could not read key file [${e.path}]. Make sure it is a valid service account key file.`,
         ).pipe(Effect.andThen(() => Effect.fail(e))),
       MissingFileIdError: (e) =>
         Console.error(
