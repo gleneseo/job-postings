@@ -18,8 +18,9 @@
     "test:integration": "vitest --run --project integration",
     "prettier:check": "prettier . --check --no-editorconfig --ignore-unknown",
     "prettier:write": "prettier . --write --no-editorconfig --ignore-unknown",
-    "lint": "npm-run-all lint:eslint",
+    "lint": "npm-run-all lint:eslint lint:test-mirror",
     "lint:eslint": "eslint .",
+    "lint:test-mirror": "tsx scripts/check-test-mirror.ts",
     "lint:eslint:report": "eslint . --output-file=.eslint/report.html --format=html",
     "proof": "git rev-parse HEAD | cowsay -r",
     "prepare": "husky && effect-language-service patch"
