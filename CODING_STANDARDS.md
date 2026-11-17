@@ -89,5 +89,5 @@ Plain language features that have no Effect counterpart worth using stay as they
 
 These rules are mechanical and belong in a lint rule or test. That work is tracked in #57. Until it lands, review checks them too:
 
-- **Code documentation:** code documentation follows [TSDoc](https://tsdoc.org/) conventions. A documentation string never ends in a `.`, unless it includes multiple phrases (e.g. multiple sentences), in which case every phrase, including the last, ends in a `.`.
+- **Code documentation:** a documentation string never ends in a `.`, unless it includes multiple phrases (e.g. multiple sentences), in which case every phrase, including the last, ends in a `.`.
 - Unit tests mirror `src/`: `tests/unit/<path>/<name>.test.ts` tests `src/<path>/<name>.ts`.
