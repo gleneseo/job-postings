@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { type CliError, Command, Flag } from "effect/cli";
+import { type CliError, Command } from "effect/cli";
 import handleGleneseoHelpersCommand from "../command-handlers/handle-gleneseo-helpers-command.js";
 import handleGmailCommand from "../command-handlers/handle-gmail-command.js";
 import handleJobPostingsCommand from "../command-handlers/handle-job-postings-command.js";
@@ -7,12 +7,6 @@ import printBanner from "../print-banner.js";
 import gmailCommand from "./gmail-command.js";
 import jobPostingsCommand from "./job-postings-command.js";
 import packageJson from "../../../package.json" with { type: "json" };
-
-const quiet = Flag.Boolean("quiet").pipe(
-  Flag.withAlias("q"),
-  Flag.withDefault(false),
-  Flag.withDescription("Suppress the banner (default: false)"),
-);
 
 type JobPostingsHandlerEffect = ReturnType<typeof handleJobPostingsCommand>;
 type GmailHandlerEffect = ReturnType<typeof handleGmailCommand>;
@@ -41,10 +35,8 @@ const helpCommand = Command.make(
     ),
 ).pipe(Command.withDescription("Show the application help"));
 
-const gleneseoHelpersCommand = Command.make(
-  "gleneseo-helpers",
-  { quiet },
-  ({ quiet }) => handleGleneseoHelpersCommand(quiet),
+const gleneseoHelpersCommand = Command.make("gleneseo-helpers", {}, () =>
+  handleGleneseoHelpersCommand(),
 ).pipe(
   Command.withDescription("A collection of Gleneseo helper commands"),
   Command.withSubcommands([gmailCommand, jobPostingsCommand, helpCommand]),
