@@ -5,11 +5,10 @@ import RequestLabel from "./request-label.js";
  * Runs a network request, failing with a domain error if the request
  * rejects or takes longer than the timeout
  *
- * @param options - The request to run and how to report its failure
- * @param options.try - Starts the request
- * @param options.label - Names the request in its timeout message
- * @param options.toError - Builds the domain error from the failure's cause
- * @param options.timeout - Maximum time to wait for the request
+ * @param options - The request to run and how to report its failure: `try`
+ * starts the request, `label` names it in the timeout message, `toError`
+ * builds the domain error from the failure's cause and `timeout` is the
+ * maximum time to wait for it
  * @returns An Effect that resolves to the request's response
  */
 const tryRequest = <A, E extends Error>(options: {
