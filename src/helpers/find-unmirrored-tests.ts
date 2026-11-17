@@ -12,14 +12,17 @@ const testSuffix = ".test.ts";
 const findUnmirroredTests = (
   testFiles: readonly string[],
   sourceFiles: readonly string[],
-): readonly string[] =>
-  testFiles.filter(
+): readonly string[] => {
+  const sources = new Set(sourceFiles);
+
+  return testFiles.filter(
     (testFile) =>
       testFile.startsWith(testPrefix) &&
       testFile.endsWith(testSuffix) &&
-      !sourceFiles.includes(
+      !sources.has(
         `src/${testFile.slice(testPrefix.length, -testSuffix.length)}.ts`,
       ),
   );
+};
 
 export default findUnmirroredTests;

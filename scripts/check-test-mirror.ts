@@ -1,9 +1,15 @@
+// This is a build script, not part of the app, so it uses plain TypeScript and Node APIs rather than Effect
 import { globSync } from "node:fs";
+import { sep } from "node:path";
 import findUnmirroredTests from "../src/helpers/find-unmirrored-tests.js";
 
+/** Lists the files matching a pattern, with `/` separators on every platform */
+const listFiles = (pattern: string): string[] =>
+  globSync(pattern).map((file) => file.replaceAll(sep, "/"));
+
 const unmirrored = findUnmirroredTests(
-  globSync("tests/unit/**/*.ts"),
-  globSync("src/**/*.ts"),
+  listFiles("tests/unit/**/*.ts"),
+  listFiles("src/**/*.ts"),
 );
 
 if (unmirrored.length > 0) {
