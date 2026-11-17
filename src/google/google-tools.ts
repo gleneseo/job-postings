@@ -42,6 +42,20 @@ const KeyFile = Schema.Struct({
   private_key: Schema.String,
 });
 
+/** Describes a Drive search and how to report its failure */
+interface SearchDriveOptions<E extends Error> {
+  /** Authenticated Google auth client with Drive access */
+  readonly auth: Auth.GoogleAuth;
+  /** Drive query selecting the files to list */
+  readonly q: string;
+  /** Names the search in its timeout message */
+  readonly label: typeof RequestLabel.Type;
+  /** Builds the domain error from the failure's cause */
+  readonly toError: (cause: unknown) => E;
+  /** Maximum time to wait for the search request */
+  readonly timeout: Duration.Duration;
+}
+
 /**
  * A collection of tools from Google
  */
@@ -192,22 +206,32 @@ class GoogleTools extends Context.Service<
         );
       });
 
+      /** Lists the Drive files matching a query, failing with the given error */
+      const searchDrive = <E extends Error>(options: SearchDriveOptions<E>) =>
+        tryRequest({
+          try: () =>
+            google.drive({ version: "v3", auth: options.auth }).files.list({
+              q: options.q,
+              fields: "files(id, name)",
+              pageSize: 10,
+            }),
+          label: options.label,
+          toError: options.toError,
+          timeout: options.timeout,
+        }).pipe(Effect.map(({ data }) => orEmptyArray(data.files)));
+
       const getFolders = Effect.fn("google-tools.get-folders")(function* (
         auth: Auth.GoogleAuth,
         folderName: typeof FolderName.Type,
         timeout: Duration.Duration,
       ) {
-        return yield* tryRequest({
-          try: () =>
-            google.drive({ version: "v3", auth }).files.list({
-              q: `name = "${folderName}" and mimeType = "application/vnd.google-apps.folder" and trashed = false`,
-              fields: "files(id, name)",
-              pageSize: 10,
-            }),
+        return yield* searchDrive({
+          auth,
+          q: `name = "${folderName}" and mimeType = "application/vnd.google-apps.folder" and trashed = false`,
           label: FOLDER_SEARCH,
           toError: (cause) => new FolderSearchError({ cause }),
           timeout,
-        }).pipe(Effect.map(({ data }) => orEmptyArray(data.files)));
+        });
       });
 
       const getFolder = Effect.fn("google-tools.get-folder")(function* (
@@ -234,17 +258,13 @@ class GoogleTools extends Context.Service<
         folderId: typeof FolderId.Type,
         timeout: Duration.Duration,
       ) {
-        return yield* tryRequest({
-          try: () =>
-            google.drive({ version: "v3", auth }).files.list({
-              q: `name = "${fileName}" and mimeType = "application/vnd.google-apps.spreadsheet" and '${folderId}' in parents and trashed = false`,
-              fields: "files(id, name)",
-              pageSize: 10,
-            }),
+        return yield* searchDrive({
+          auth,
+          q: `name = "${fileName}" and mimeType = "application/vnd.google-apps.spreadsheet" and '${folderId}' in parents and trashed = false`,
           label: FILE_SEARCH,
           toError: (cause) => new FileSearchError({ cause }),
           timeout,
-        }).pipe(Effect.map(({ data }) => orEmptyArray(data.files)));
+        });
       });
 
       const getFile = Effect.fn("google-tools.get-file")(function* (
