@@ -51,10 +51,10 @@ export default defineConfig(
           message:
             "Don't export the default value inline. Define it first, then `export default name;` at the bottom of the file.",
         },
+        // `vitest/valid-title` doesn't recognise the `@effect/vitest` variants, so check them here.
+        // These selectors live in this block, which applies to every file, on purpose: a
+        // `tests/**` block would replace this whole rule and drop the export selectors above
         {
-          // `vitest/valid-title` doesn't recognise the `@effect/vitest` variants, so check them here.
-          // These selectors live in this block, which applies to every file, on purpose: a
-          // `tests/**` block would replace this whole rule and drop the export selectors above
           selector:
             "CallExpression[callee.object.name='it'][callee.property.name=/^(effect|live|scoped|scopedLive)$/][arguments.0.type='Literal'][arguments.0.value!=/^should /]",
           message: 'Test labels must start with "should".',
