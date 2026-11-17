@@ -24,6 +24,11 @@ ruleTester.run("doc-string-full-stops", docStringFullStops, {
     "/** Does a thing, e.g. adds one */\nconst a = 1;",
     // code blocks and empty sections are skipped
     "/**\n * Does a thing\n *\n * @example\n * ```ts\n * add(1, 2);\n * ```\n * @internal\n */\nconst a = 1;",
+    // abbreviations before a capital don't end a phrase
+    "/** Reads mail, e.g. Gmail messages */\nconst a = 1;",
+    "/** Reads mail, i.e. Gmail messages */\nconst a = 1;",
+    "/** Compares Drive vs. Gmail */\nconst a = 1;",
+    "/** Reads mail, e.g. Gmail. Then sends it. */\nconst a = 1;",
     // only doc comments are checked
     "// Does a thing.\nconst a = 1;",
     "/* Does a thing. */\nconst a = 1;",
@@ -40,6 +45,14 @@ ruleTester.run("doc-string-full-stops", docStringFullStops, {
     {
       code: "/**\n * Does a thing.\n *\n * Does another\n */\nconst a = 1;",
       errors: [{ messageId: "multiplePhrasesNeedFullStops" }],
+    },
+    {
+      code: "/** Reads mail, e.g. Gmail. Then sends it */\nconst a = 1;",
+      errors: [{ messageId: "multiplePhrasesNeedFullStops" }],
+    },
+    {
+      code: "/** Reads mail, e.g. Gmail messages. */\nconst a = 1;",
+      errors: [{ messageId: "singlePhraseEndsInFullStop" }],
     },
     {
       code: "/**\n * Does a thing\n *\n * @param x - The input.\n */\nconst a = 1;",

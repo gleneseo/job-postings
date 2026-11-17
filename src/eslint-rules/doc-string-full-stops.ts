@@ -1,6 +1,7 @@
 import type { AST, Rule } from "eslint";
 
-const phraseBoundary = /(?<=[.!?])\s+(?=[A-Z])/;
+// A phrase ends at `.`, `!` or `?` followed by a capital, unless the full stop belongs to an abbreviation
+const phraseBoundary = /(?<!\b(?:e\.g|i\.e|vs)\.)(?<=[.!?])\s+(?=[A-Z])/;
 const tagLine = /^@(\w+)\s*/;
 
 /**
@@ -64,6 +65,7 @@ const docStringFullStops: Rule.RuleModule = {
 
         for (const section of sectionsOf(comment.value)) {
           const phrases = phrasesOf(section);
+          // ESLint always sets `loc` on comments; the type just marks it optional
           const loc = comment.loc as AST.SourceLocation;
 
           if (phrases.length === 1 && phrases[0]?.endsWith(".") === true) {
