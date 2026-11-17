@@ -204,6 +204,8 @@ class GmailTools extends Context.Service<
         yield* Console.error(
           `Opening browser to authorize Gmail access (waiting up to ${Duration.format(CONSENT_TIMEOUT)})...`,
         );
+        // `authenticate` takes no signal, so a timeout fails the Effect but its
+        // local callback server may keep running until the process exits
         const { credentials } = yield* tryRequest({
           try: () =>
             authenticate({ keyfilePath: credentialsPath, scopes: SCOPES }),
@@ -240,16 +242,19 @@ class GmailTools extends Context.Service<
           const gmail = google.gmail({ version: "v1", auth });
           const listPage = (pageToken: Option.Option<string>) =>
             tryRequest({
-              try: () =>
-                gmail.users.messages.list({
-                  userId: "me",
-                  q: query,
-                  maxResults: MAX_RESULTS_PER_PAGE,
-                  ...Option.match(pageToken, {
-                    onNone: () => ({}),
-                    onSome: (token) => ({ pageToken: token }),
-                  }),
-                }),
+              try: (signal) =>
+                gmail.users.messages.list(
+                  {
+                    userId: "me",
+                    q: query,
+                    maxResults: MAX_RESULTS_PER_PAGE,
+                    ...Option.match(pageToken, {
+                      onNone: () => ({}),
+                      onSome: (token) => ({ pageToken: token }),
+                    }),
+                  },
+                  { signal },
+                ),
               label: RequestLabel.make("Message list"),
               toError: (cause) => new GmailListError({ cause }),
               timeout,
@@ -284,8 +289,11 @@ class GmailTools extends Context.Service<
         const fetchError = (cause: unknown) =>
           new GmailFetchError({ messageId: id, cause });
         return tryRequest({
-          try: () =>
-            gmail.users.messages.get({ userId: "me", id, format: "raw" }),
+          try: (signal) =>
+            gmail.users.messages.get(
+              { userId: "me", id, format: "raw" },
+              { signal },
+            ),
           label: RequestLabel.make("Message fetch"),
           toError: fetchError,
           timeout,

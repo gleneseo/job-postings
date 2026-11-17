@@ -3,8 +3,8 @@ import RequestLabel from "./request-label.js";
 
 /** Describes a network request and how to report its failure */
 interface TryRequestOptions<A, E extends Error> {
-  /** Starts the request */
-  readonly try: () => Promise<A>;
+  /** Starts the request, given a signal that aborts when it times out or is interrupted */
+  readonly try: (signal: AbortSignal) => Promise<A>;
   /** Names the request in its timeout message */
   readonly label: typeof RequestLabel.Type;
   /** Builds the domain error from the failure's cause */
