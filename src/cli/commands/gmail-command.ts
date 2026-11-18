@@ -46,7 +46,7 @@ const output = Flag.String("output").pipe(
   Flag.withOptionalValue("output"),
   Flag.optional,
   Flag.withDescription(
-    "Also save each email as <subject>.txt (.html if it has only an HTML body) in a directory, including emails already in the database; give it as --output=<dir> (default: output)",
+    "Also save each email as <Gmail message ID> - <subject>.txt (.html if it has only an HTML body) in a directory, including emails already in the database; give it as --output=<dir> (default: output)",
   ),
 );
 

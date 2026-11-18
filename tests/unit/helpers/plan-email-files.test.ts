@@ -19,7 +19,7 @@ describe("planEmailFiles", () => {
   it("should plan a text file with headers and the plain-text body", () => {
     expect(planEmailFiles([makeEmail({})])).toStrictEqual([
       {
-        name: "Hello.txt",
+        name: "1 - Hello.txt",
         content:
           "From: Ann <ann@example.com>\nTo: Bob <bob@example.com>\nSubject: Hello\nReceived: 2026-01-02T03:04:05.000Z\nGmail-Message-ID: 1\n\nBody",
       },
@@ -31,7 +31,7 @@ describe("planEmailFiles", () => {
       planEmailFiles([makeEmail({ textBody: "  ", htmlBody: "<p>Hi</p>" })]),
     ).toStrictEqual([
       {
-        name: "Hello.html",
+        name: "1 - Hello.html",
         content:
           "\ufeff<!-- From: Ann <ann@example.com> -->\n" +
           "<!-- To: Bob <bob@example.com> -->\n" +
@@ -75,25 +75,37 @@ describe("planEmailFiles", () => {
   it("should plan a text file for an email with both bodies", () => {
     const [file] = planEmailFiles([makeEmail({ htmlBody: "<p>Hi</p>" })]);
 
-    expect(file?.name).toBe("Hello.txt");
+    expect(file?.name).toBe("1 - Hello.txt");
   });
 
   it("should plan a text file for an email with no body", () => {
     const [file] = planEmailFiles([makeEmail({ textBody: "" })]);
 
-    expect(file?.name).toBe("Hello.txt");
+    expect(file?.name).toBe("1 - Hello.txt");
   });
 
-  it("should append the message ID to the later of two emails sharing a subject", () => {
+  it("should start each file name with the email's Gmail message ID", () => {
+    const [file] = planEmailFiles([makeEmail({ id: "18c3f2a9b7d4e1f0" })]);
+
+    expect(file?.name).toBe("18c3f2a9b7d4e1f0 - Hello.txt");
+  });
+
+  it("should give two emails sharing a subject distinct names with no extra suffix", () => {
     const files = planEmailFiles([
       makeEmail({ id: "b" }),
       makeEmail({ id: "a" }),
     ]);
 
     expect(files.map((file) => file.name)).toStrictEqual([
-      "Hello.txt",
-      "Hello (b).txt",
+      "a - Hello.txt",
+      "b - Hello.txt",
     ]);
+  });
+
+  it("should name an email with an empty subject with (no subject)", () => {
+    const [file] = planEmailFiles([makeEmail({ id: "a", subject: "   " })]);
+
+    expect(file?.name).toBe("a - (no subject).txt");
   });
 
   it("should keep header values on a single line", () => {

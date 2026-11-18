@@ -1,4 +1,4 @@
-import { Array, HashSet, Order } from "effect";
+import { Array, Order } from "effect";
 import cleanContent from "./clean-content.js";
 import cleanHeader from "./clean-header.js";
 import type Email from "./email.js";
@@ -17,27 +17,23 @@ const UTF8_BOM = "\ufeff";
  * `.txt` file with headers and the plain-text body, or a `.html` file for an
  * email with only an HTML body, with the same headers as HTML comments and a
  * UTF-8 byte order mark so browsers decode it as UTF-8 even when the HTML
- * declares another charset. When two emails share a subject, the later one
- * (by Gmail message ID) gets its ID appended to its name.
+ * declares another charset. Each file name starts with the email's Gmail
+ * message ID, so every name is unique even when two emails share a subject.
  *
  * @param emails - The emails to write
  * @returns The files to write, ordered by Gmail message ID
  */
-const planEmailFiles = (emails: readonly (typeof Email.Type)[]) => {
-  const [, files] = Array.mapAccum(
+const planEmailFiles = (emails: readonly (typeof Email.Type)[]) =>
+  Array.map(
     Array.sort(
       emails,
       Order.mapInput(Order.String, (email: typeof Email.Type) => email.id),
     ),
-    HashSet.empty<string>(),
-    (used, email) => {
+    (email) => {
       const htmlOnly =
         email.textBody.trim() === "" && email.htmlBody.trim() !== "";
       const extension = htmlOnly ? "html" : "txt";
-      const stem = fileStem(email.subject);
-      const name = HashSet.has(used, `${stem}.${extension}`)
-        ? `${stem} (${email.id}).${extension}`
-        : `${stem}.${extension}`;
+      const name = `${email.id} - ${fileStem(email.subject)}.${extension}`;
 
       const headers = [
         `From: ${cleanHeader(email.from.name)} <${cleanHeader(email.from.email)}>`,
@@ -51,10 +47,8 @@ const planEmailFiles = (emails: readonly (typeof Email.Type)[]) => {
           headers.map((header) => `${htmlComment(header)}\n`).join("") +
           cleanContent(email.htmlBody)
         : `${headers.join("\n")}\n\n${cleanContent(email.textBody)}`;
-      return [HashSet.add(used, name), { name, content }] as const;
+      return { name, content };
     },
   );
-  return files;
-};
 
 export default planEmailFiles;

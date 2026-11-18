@@ -370,7 +370,7 @@ describe("handleGmailCommand", () => {
         );
         assert.deepStrictEqual(
           doubles.writeFileString.mock.calls.map(([path]: unknown[]) => path),
-          ["output/Subject new.txt", "output/Subject saved.txt"],
+          ["output/new - Subject new.txt", "output/saved - Subject saved.txt"],
         );
         assert.deepStrictEqual((yield* TestConsole.errorLines).slice(-1), [
           "Saved 2 file(s) to output/.",
