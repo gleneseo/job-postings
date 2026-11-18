@@ -48,12 +48,10 @@ const copyToWorktree = ["node_modules"];
 // ---------------------------------------------------------------------------
 
 for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
-  console.log(
-    `\n=== Iteration ${String(iteration)}/${String(MAX_ITERATIONS)} ===\n`,
-  );
+  console.log(`\n=== Iteration ${iteration}/${MAX_ITERATIONS} ===\n`);
 
   // Generate a unique branch name for this iteration.
-  const branch = `sandcastle/sequential-reviewer/${String(Date.now())}`;
+  const branch = `sandcastle/sequential-reviewer/${Date.now()}`;
 
   // Create a single sandbox that both the implementer and reviewer share.
   // This gives both agents a real, named branch that persists across phases.
@@ -93,7 +91,7 @@ for (let iteration = 1; iteration <= MAX_ITERATIONS; iteration++) {
     }
 
     console.log(`\nImplementation complete on branch: ${branch}`);
-    console.log(`Commits: ${String(implement.commits.length)}`);
+    console.log(`Commits: ${implement.commits.length}`);
 
     // -----------------------------------------------------------------------
     // Phase 2: Review

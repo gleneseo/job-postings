@@ -17,6 +17,7 @@ export default defineConfig(
       ".workmux/**",
       "vitest.config.ts",
       "commitlint.config.js",
+      ".sandcastle/main.ts",
     ],
   },
   {
