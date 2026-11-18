@@ -29,10 +29,12 @@ describe("saveEmailFiles", () => {
       ]);
 
       assert.deepStrictEqual((yield* fs.readDirectory(directory)).sort(), [
-        "First.txt",
-        "Second.txt",
+        "a - First.txt",
+        "b - Second.txt",
       ]);
-      expect(yield* fs.readFileString(path.join(directory, "First.txt"))).toBe(
+      expect(
+        yield* fs.readFileString(path.join(directory, "a - First.txt")),
+      ).toBe(
         "From: Ann <ann@example.com>\nTo: Bob <bob@example.com>\nSubject: First\nReceived: 2026-01-02T03:04:05.000Z\nGmail-Message-ID: a\n\nBody",
       );
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
