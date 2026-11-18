@@ -27,7 +27,7 @@
     "sandcastle": "npx tsx .sandcastle/main.ts"
   },
   "keywords": [],
-  "author": "Gleneseo Engineering",
+  "author": "Gleneseo Consulting LLC",
   "license": "MIT",
   "type": "module",
   "engines": {
