@@ -21,7 +21,7 @@ describe("planEmailFiles", () => {
       {
         name: "Hello.txt",
         content:
-          "From: Ann <ann@example.com>\nTo: Bob <bob@example.com>\nSubject: Hello\nReceived: 2026-01-02T03:04:05.000Z\n\nBody",
+          "From: Ann <ann@example.com>\nTo: Bob <bob@example.com>\nSubject: Hello\nReceived: 2026-01-02T03:04:05.000Z\nGmail-Message-ID: 1\n\nBody",
       },
     ]);
   });
@@ -37,9 +37,33 @@ describe("planEmailFiles", () => {
           "<!-- To: Bob <bob@example.com> -->\n" +
           "<!-- Subject: Hello -->\n" +
           "<!-- Received: 2026-01-02T03:04:05.000Z -->\n" +
+          "<!-- Gmail-Message-ID: 1 -->\n" +
           "<p>Hi</p>",
       },
     ]);
+  });
+
+  it("should put the Gmail message ID header after Received in a text file", () => {
+    const [file] = planEmailFiles([makeEmail({ id: "18c3f2a9b7d4e1f0" })]);
+
+    expect(file?.content).toContain(
+      "Received: 2026-01-02T03:04:05.000Z\nGmail-Message-ID: 18c3f2a9b7d4e1f0\n\n",
+    );
+  });
+
+  it("should put the Gmail message ID comment after Received in an html file", () => {
+    const [file] = planEmailFiles([
+      makeEmail({
+        id: "18c3f2a9b7d4e1f0",
+        textBody: "",
+        htmlBody: "<p>Hi</p>",
+      }),
+    ]);
+
+    expect(file?.content).toContain(
+      "<!-- Received: 2026-01-02T03:04:05.000Z -->\n" +
+        "<!-- Gmail-Message-ID: 18c3f2a9b7d4e1f0 -->\n",
+    );
   });
 
   it("should not start a text file with a byte order mark", () => {
