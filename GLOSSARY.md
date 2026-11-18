@@ -30,6 +30,10 @@ _Avoid_: Credentials, access token file
 The SQLite file where the `gmail` Helper stores the emails it downloads, so later runs only fetch new messages. It is either given explicitly or, by default, kept in the Data directory as `gmail.sqlite`.
 _Avoid_: Cache, inbox
 
+**Gmail message ID**:
+The ID Gmail gives each message, which the `gmail` Helper uses to tell emails apart and to find them in the Email database. It is Gmail's own identifier for the message, not the standard `Message-ID` email header, which the sender sets and which holds a different value.
+_Avoid_: Message-ID (the standard email header), thread ID
+
 **Well-known location**:
 The place a Helper looks for one of its files when the user doesn't give a path. It is the file's name inside the Config directory or the Data directory, depending on whether the file is configuration or generated data. The home of each directory comes from an environment variable when that is set to an absolute path, and otherwise falls back to a default under the user's home directory.
 _Avoid_: Default path, default location

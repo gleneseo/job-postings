@@ -44,6 +44,7 @@ const planEmailFiles = (emails: readonly (typeof Email.Type)[]) => {
         `To: ${cleanHeader(email.to.name)} <${cleanHeader(email.to.email)}>`,
         `Subject: ${cleanHeader(email.subject)}`,
         `Received: ${email.receivedAt}`,
+        `Gmail-Message-ID: ${email.id}`,
       ];
       const content = htmlOnly
         ? UTF8_BOM +
